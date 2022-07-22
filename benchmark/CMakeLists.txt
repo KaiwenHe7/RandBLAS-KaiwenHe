@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 message(STATUS "Checking for hqrrp ... ")
-find_package(hqrrp REQUIRED)
+find_package(RandBLAS REQUIRED)
 message(STATUS "Done checking for hqrrp. ...")
 
 message(STATUS "Looking for BLAS++ ... ")
