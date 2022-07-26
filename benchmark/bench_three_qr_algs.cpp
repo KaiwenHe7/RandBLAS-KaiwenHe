@@ -1,5 +1,5 @@
 #include <blas.hh>
-#include <hqrrp.h>
+#include <RandBLAS.hh>
 
 #include <stdio.h>
 #include <unistd.h>
