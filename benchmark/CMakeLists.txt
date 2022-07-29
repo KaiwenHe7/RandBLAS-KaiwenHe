@@ -17,32 +17,45 @@ message(STATUS "Done looking for BLAS++.")
 ##find_package(lapackpp REQUIRED)
 ##message(STATUS "Done looking for LAPACK++.")
 
-
 set(
-    bench_three_qr_algs_cxx
-    bench_three_qr_algs.cpp
+    helloworld_cxx
+    helloworld.cpp
 )
 add_executable(
-    bench_three_qr_algs ${bench_three_qr_algs_cxx}
+    helloworld  ${helloworld_cxx}
 )
 target_include_directories(
-    bench_three_qr_algs PUBLIC ${Random123_DIR}
+    helloworld PUBLIC ${Random123_DIR}
 )
 target_link_libraries(
-    bench_three_qr_algs PUBLIC RandBLAS blaspp lapackpp
+    helloworld PUBLIC RandBLAS blaspp 
 )
 
-
-set(
-    bench_blocksizes_cxx
-    bench_blocksizes.cpp
-)
-add_executable(
-    bench_blocksizes ${bench_blocksizes_cxx}
-)
-target_include_directories(
-    bench_blocksizes PUBLIC ${Random123_DIR}
-)
-target_link_libraries(
-    bench_blocksizes PUBLIC RandBLAS blaspp lapackpp
-)
+#set(
+#    bench_three_qr_algs_cxx
+#    bench_three_qr_algs.cpp
+#)
+#add_executable(
+#    bench_three_qr_algs ${bench_three_qr_algs_cxx}
+#)
+#target_include_directories(
+#    bench_three_qr_algs PUBLIC ${Random123_DIR}
+#)
+#target_link_libraries(
+#    bench_three_qr_algs PUBLIC RandBLAS blaspp lapackpp
+#)
+#
+#
+#set(
+#    bench_blocksizes_cxx
+#    bench_blocksizes.cpp
+#)
+#add_executable(
+#    bench_blocksizes ${bench_blocksizes_cxx}
+#)
+#target_include_directories(
+#    bench_blocksizes PUBLIC ${Random123_DIR}
+#)
+#target_link_libraries(
+#    bench_blocksizes PUBLIC RandBLAS blaspp lapackpp
+#)
