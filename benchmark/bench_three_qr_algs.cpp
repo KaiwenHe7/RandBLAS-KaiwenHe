@@ -1,4 +1,5 @@
 #include <blas.hh>
+#include <lapack.hh>
 #include <RandBLAS.hh>
 
 #include <stdio.h>
@@ -30,7 +31,7 @@ double time_dgeqrx(int64_t m_A, int64_t n_A, double *buff_A, char x)
       lapack::geqp3(m_A, n_A, buff_A, m_A, buff_p, buff_tau);
       break;
     case 'R':
-      HQRRP::dgeqpr(m_A, n_A, buff_A, m_A, buff_p, buff_tau);
+      RandBLAS::dgeqpr(m_A, n_A, buff_A, m_A, buff_p, buff_tau);
       break;
     case 'F':
       lapack::geqrf(m_A, n_A, buff_A, m_A, buff_tau);
@@ -48,7 +49,7 @@ double time_dgeqrx(int64_t m_A, int64_t n_A, double *buff_A, char x)
 
 // ============================================================================
 int main( int argc, char *argv[] ) {
-  using namespace HQRRP;
+  using namespace RandBLAS;
 
   int64_t m_A      = 5000;
   int64_t n_A      = 5000;

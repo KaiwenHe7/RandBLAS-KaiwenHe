@@ -13,9 +13,9 @@ message(STATUS "Looking for BLAS++ ... ")
 find_package(blaspp REQUIRED)
 message(STATUS "Done looking for BLAS++.")
 
-##message(STATUS "Looking for LAPACK++ ...")
-##find_package(lapackpp REQUIRED)
-##message(STATUS "Done looking for LAPACK++.")
+message(STATUS "Looking for LAPACK++ ...")
+find_package(lapackpp REQUIRED)
+message(STATUS "Done looking for LAPACK++.")
 
 set(
     helloworld_cxx
@@ -28,7 +28,7 @@ target_include_directories(
     helloworld PUBLIC ${Random123_DIR}
 )
 target_link_libraries(
-    helloworld PUBLIC RandBLAS blaspp 
+    helloworld PUBLIC RandBLAS blaspp lapackpp 
 )
 
 #set(
