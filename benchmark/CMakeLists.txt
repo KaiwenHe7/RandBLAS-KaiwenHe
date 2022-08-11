@@ -18,17 +18,31 @@ find_package(lapackpp REQUIRED)
 message(STATUS "Done looking for LAPACK++.")
 
 set(
-    helloworld_cxx
-    helloworld.cpp
+    test_cxx
+    test.cpp
 )
 add_executable(
-    helloworld  ${helloworld_cxx}
+    test  ${test_cxx}
 )
 target_include_directories(
-    helloworld PUBLIC ${Random123_DIR}
+    test PUBLIC ${Random123_DIR}
 )
 target_link_libraries(
-    helloworld PUBLIC RandBLAS blaspp lapackpp 
+    test PUBLIC RandBLAS blaspp lapackpp 
+)
+
+set(
+    OSBM_cxx
+    OSBM.cpp
+)
+add_executable(
+    OSBM  ${OSBM_cxx}
+)
+target_include_directories(
+    OSBM PUBLIC ${Random123_DIR}
+)
+target_link_libraries(
+    OSBM PUBLIC RandBLAS blaspp lapackpp 
 )
 
 #set(
