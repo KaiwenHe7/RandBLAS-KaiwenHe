@@ -40,6 +40,10 @@ void rot(T (*array)[len]){
     blas::rot(4, array[1], 1, array[2], 1, 0.1, 0.8);
 }
 
+template<typename T, size_t len>
+double dotprod(T (*array)[len]){
+    return blas::dot(3, &(*array)[0], 1, &(*array)[9],1);
+}
 
 int main( int argc, char *argv[] ) {
     int i;
@@ -55,8 +59,10 @@ int main( int argc, char *argv[] ) {
     double test2[4] = {8,9,10,11};
     blas::rot(4,(&test)[0],1,(&test2)[0],1,0.1,0.8);
     std::cout << test2[3];*/
-    blas::rot(4,(&V)[0],1,(&V)[5],1,0.1,0.8);
-    std::cout << V[0];
+    /*blas::rot(4,(&V)[0],1,(&V)[5],1,0.1,0.8);
+    std::cout << V[0];*/
+    std::cout << blas::dot(3, &V[0], 1, &V[9],1) << '\n';
+    std::cout << dotprod<double,12>(&V);
 
 
 }

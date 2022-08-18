@@ -15,6 +15,29 @@ void print_mat(double M[rows][cols]);
 template <typename T> int sgn(T val);
 
 template<typename T, int64_t n_rows, int64_t n_cols>
+void OSBM(T (*V)[n_rows][n_cols], T (*lev)[n_cols]);
+
+template<typename T, int64_t n_rows, int64_t n_cols>
+void OSBMrm(T (*V)[n_rows*n_cols], T (*lev)[n_rows]);
+
+int main( int argc, char *argv[] ) {
+    double V[3][5] = {{0,0,1,0,0}, {0,0,0,1,0}, {0,0,0,0,1}};
+    double Vrm[15] = {0,0,0, 0,0,0, 1,0,0, 0,1,0, 0,0,1};
+    double ell[5] = {0.4, 0.5, 0.6, 0.7, 0.8};
+    OSBM<double,3,5>(&V, &ell);
+    OSBMrm<double,5,3>(&Vrm, &ell);
+    for (int i=0; i<15; i++) {
+        std::cout << Vrm[i] << '\n';
+    }
+    print_mat<double,3,5>(V);
+}
+
+
+template <typename T> int sgn(T val) {
+    return (T(0) < val) - (val < T(0));
+}
+
+template<typename T, int64_t n_rows, int64_t n_cols>
 void OSBM(T (*V)[n_rows][n_cols], T (*lev)[n_cols]) {
     int its = 0;               /* Records number of iterations to convergence */
     int a,b,c,i,j;             /* Indexing variables */
@@ -100,19 +123,73 @@ void OSBM(T (*V)[n_rows][n_cols], T (*lev)[n_cols]) {
     }
 }
 
+template<typename T, int64_t n_rows, int64_t n_cols>
+void OSBMrm(T (*V)[n_rows*n_cols], T (*lev)[n_rows]) {
+    int its = 0;               /* Records number of iterations to convergence */
+    int a,b,c;                 /* Indexing variables */
+    int i,j;                   /* Stores indices of rows that satisfies majorization condition */
+    bool cond, ccond;          /* cond indicates if the majorization condition has found two indices i,j
+                                  ccond helps to break the loop if an innerloop is not satisfied  */
+    T r_ii, r_jj, r_ij;        /* values used to compute cos and sin for the givens rotation */
+    T t, cos, sin;           
+    T rownorms[n_rows];        /* Array to hold row norms of V at each iteration */
+    
+    while(true) {
+        cond = false;
+        ccond = true;
 
-int main( int argc, char *argv[] ) {
-    double V[3][5] = {{0,0,1,0,0}, {0,0,0,1,0}, {0,0,0,0,1}};
-    double ell[5] = {0.4, 0.5, 0.6, 0.7, 0.8};
-    OSBM<double,3,5>(&V, &ell);
-    print_mat<double,3,5>(V);
+        for (a=0; a<n_rows; a++){      /* updates colnorms to store col norms of V at each iteration */
+            rownorms[a] = blas::dot(n_cols, &(*V)[a*n_cols], 1, &(*V)[a*n_cols], 1);
+        }
+
+        for (a=0; a<(n_rows-1); a++) {    
+            for (b=a+1; b<n_rows; b++) {
+                if (((*lev)[a] - rownorms[a] > 1e-10) && (rownorms[b] - (*lev)[b] > 1e-10)) {
+                    ccond = true;
+                    for (c=a+1; c<b; c++) {
+                        if (abs(rownorms[c] - (*lev)[c]) > 1e-12) {
+                            ccond = false;
+                            break;
+                        }
+                    }
+                    if (ccond == true) {
+                        i = a;
+                        j = b;
+                        cond = true;
+                        break;
+                    }
+                }
+                
+            }
+            if (cond == true) {
+                break;
+            }    
+        } 
+        if (cond==false || its==n_rows) {
+            break;
+        }
+
+        r_ii = rownorms[i];
+        r_jj = rownorms[j];
+        r_ij = blas::dot(n_cols, &(*V)[i*n_cols], 1, &(*V)[j*n_cols], 1);
+
+        if ((*lev)[i] - r_ii < r_jj - (*lev)[j]) {
+            t = (r_ij + sqrt(pow(r_ij,2) - (r_ii - (*lev)[i])*(r_jj - (*lev)[i]))) / (r_jj - (*lev)[i]);
+            cos = 1/sqrt(1 + pow(t,2));
+            sin = cos*t;
+            blas::rot(n_cols, &(*V)[i*n_cols], 1, &(*V)[j*n_cols],1, cos, sin);
+        } else {
+            t = (-r_ij - sqrt(pow(r_ij,2) - (r_ii -  (*lev)[j])*(r_jj - (*lev)[j]))) / (r_ii - (*lev)[j]);
+            cos = 1/sqrt(1 + pow(t,2));
+            sin = cos*t;
+            blas::rot(n_cols, &(*V)[i*n_cols], 1, &(*V)[j*n_cols],1, cos, sin);
+        }
+
+        its += 1;
+        cond = false;
+
+    }
 }
-
-
-template <typename T> int sgn(T val) {
-    return (T(0) < val) - (val < T(0));
-}
-
 
 template<typename T, size_t rows, size_t cols>
 void print_mat(double M[rows][cols]) {
