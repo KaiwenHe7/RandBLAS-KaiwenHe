@@ -32,7 +32,7 @@ void printval(T (*array)[rows][cols]){
         std::cout << rownorms[i] << '\n';
     }*/
     /*double* critrow = (*array)[2];*/
-    std::cout << array[0][1] << "\n";
+   /* std::cout << array[0][1] << "\n";*/
 }
 
 template<typename T, size_t len>
@@ -42,6 +42,7 @@ void rot(T (*array)[len]){
 
 template<typename T, size_t len>
 double dotprod(T (*array)[len]){
+    /*return blas::dot(3, &(*array)[0], 1, &(*array)[9],1);*/
     return blas::dot(3, &(*array)[0], 1, &(*array)[9],1);
 }
 
@@ -61,9 +62,18 @@ int main( int argc, char *argv[] ) {
     std::cout << test2[3];*/
     /*blas::rot(4,(&V)[0],1,(&V)[5],1,0.1,0.8);
     std::cout << V[0];*/
-    std::cout << blas::dot(3, &V[0], 1, &V[9],1) << '\n';
-    std::cout << dotprod<double,12>(&V);
-
+    /*std::cout << blas::dot(3, &V[0], 1, &V[9],1) << '\n';
+    std::cout << dotprod<double,12>(&V);*/
+    /*int m = 3;
+    int n = 2;
+    double rmmatmul[6] = {1,2, 3,4, 5,6};
+    double rmmatmulT[6] = {1,3,5, 2,4,6};
+    double C[4];
+    blas::gemm(blas::Layout::RowMajor, blas::Op::Trans, blas::Op::NoTrans, n, n, m, 1, rmmatmul, n, rmmatmul, n, 0, C, n);
+    for (i=0;i<4;i++){
+        std::cout << C[i] << '\n';
+    }*/
+    std::cout << std::numeric_limits<double>::epsilon();
 
 }
 
