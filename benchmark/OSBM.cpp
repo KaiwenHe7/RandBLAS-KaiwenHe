@@ -13,7 +13,7 @@
 template<typename T, size_t rows, size_t cols>
 void print_mat(double M[rows][cols]); 
 
-template <typename T> int sgn(T val);
+template <typename T> T sgn(T val);
 
 template<typename T, int64_t n_rows, int64_t n_cols>
 void OSBM(T (*V)[n_rows][n_cols], T (*lev)[n_cols]);
@@ -37,18 +37,18 @@ template<typename T>
 int check_levscores(int64_t n_rows, int64_t n_cols, T (*lev));
 
 template<typename T>
-int check_majorization(int64_t n_rows, int64_t n_cols, T (*V), T(*lev));
+int check_majorization(int64_t n_rows, int64_t n_cols, T (*rownorms), T (*lev));
+
+template<typename T>
+void random_sample(int64_t n_rows, int64_t n_cols, T (*V), uint32_t seed);
 
 int main( int argc, char *argv[] ) {
-    double V[3][5] = {{0,0,1,0,0}, {0,0,0,1,0}, {0,0,0,0,1}};
     double Vrm[15] = {0,0,0, 0,0,0, 1,0,0, 0,1,0, 0,0,1};
     double ell[5] = {0.4, 0.5, 0.6, 0.6, 0.9};
-    OSBM<double,3,5>(&V, &ell);
     OSBMrmt<double>(5,3,Vrm,ell);
     for (int i=0; i<15; i++) {
         std::cout << Vrm[i] << '\n';
     }
-    print_mat<double,3,5>(V);
     std::cout << '\n';
     std::cout << "Max lev score diff:  " << levscore_test<double>(5,3,Vrm, ell) << '\n';
     std::cout << "Orthogonality test:  " << orthogonality_test<double>(5,3,Vrm) << '\n';
@@ -56,10 +56,6 @@ int main( int argc, char *argv[] ) {
 
 }
 
-
-template <typename T> int sgn(T val) {
-    return (T(0) < val) - (val < T(0));
-}
 
 template<typename T, int64_t n_rows, int64_t n_cols>
 void OSBM(T (*V)[n_rows][n_cols], T (*lev)[n_cols]) {
@@ -75,15 +71,14 @@ void OSBM(T (*V)[n_rows][n_cols], T (*lev)[n_cols]) {
     while(true) {
         cond = false;
         ccond = true;
-
+    
         for (a=0; a<n_cols; a++){      /* updates colnorms to store col norms of V at each iteration */
             for (b=0; b<n_rows; b++){
                 coltemp[b] = (*V)[b][a];
             }
             colnorms[a] = blas::dot(n_rows, coltemp, 1, coltemp, 1);
         }
-
-
+        
         for (a=0; a<(n_cols-1); a++) {    /* OSBM conditional to choose indices i,j to perform givens rotations on */
             for (b=a+1; b<n_cols; b++) {
                 if (((*lev)[a] - colnorms[a] > std::numeric_limits<double>::epsilon()*n_cols) && (colnorms[b] - (*lev)[b] > std::numeric_limits<double>::epsilon()*n_cols)) {
@@ -228,7 +223,11 @@ void OSBMrmt(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
     T r_ii, r_jj, r_ij;        /* values used to compute cos and sin for the givens rotation */
     T t, cos, sin;           
     T rownorms[n_rows];        /* Array to hold row norms of V at each iteration */
-    
+
+    if (check_levscores<T>(n_rows, n_cols, lev) == -1){
+        throw std::invalid_argument("Leverage scores are invalid");
+    }
+
     while(true) {
         cond = false;
         ccond = true;
@@ -236,13 +235,17 @@ void OSBMrmt(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
         for (a=0; a<n_rows; a++){      /* updates colnorms to store col norms of V at each iteration */
             rownorms[a] = blas::dot(n_cols, &(V)[a*n_cols], 1, &(V)[a*n_cols], 1);
         }
+        
+        if (its==0 && check_majorization<T>(n_rows, n_cols, rownorms, lev)==-1){
+            throw std::invalid_argument("Matrix row norms does not majorize the leverage scores");
+        }
 
         for (a=0; a<(n_rows-1); a++) {    
             for (b=a+1; b<n_rows; b++) {
-                if (((lev)[a] - rownorms[a] > std::numeric_limits<double>::epsilon()*n_cols) && (rownorms[b] - (lev)[b] > std::numeric_limits<double>::epsilon()*n_cols)) {
+                if (((lev)[a] - rownorms[a] > std::numeric_limits<T>::epsilon()*n_cols) && (rownorms[b] - (lev)[b] > std::numeric_limits<T>::epsilon()*n_cols)) {
                     ccond = true;
                     for (c=a+1; c<b; c++) {
-                        if (abs(rownorms[c] - (lev)[c]) > std::numeric_limits<double>::epsilon()*n_cols) {
+                        if (abs(rownorms[c] - (lev)[c]) > std::numeric_limits<T>::epsilon()*n_cols) {
                             ccond = false;
                             break;
                         }
@@ -318,12 +321,13 @@ template<typename T>
 int check_levscores(int64_t n_rows, int64_t n_cols, T (*lev)) {
     T sum;
     for (int i=0; i<n_rows; i++) {
-        if (lev[i]<0 || lev[i]>1) {
+        if (lev[i]<=0 || lev[i]>=1) {
             return -1;
         }
         sum += lev[i];
     }
-    if (abs(sum - (T) n_cols) > std::numeric_limits<double>::epsilon()*n_cols) {
+    std::cout << ""; 
+    if (abs(sum - n_cols) > std::numeric_limits<T>::epsilon()*n_rows) {
         return -1;
     }
     return 0;
@@ -340,7 +344,7 @@ int check_majorization(int64_t n_rows, int64_t n_cols, T (*rownorms), T(*lev)) {
             return -1;
         }
     }
-    return (abs(sum_rownorms - sum_lev) < std::numeric_limits<double>::epsilon()*n_cols);
+    return (abs(sum_rownorms - sum_lev) < std::numeric_limits<T>::epsilon()*n_cols);
 }
 
 
@@ -356,3 +360,28 @@ void print_mat(double M[rows][cols]) {
         }
     }
 }
+
+
+template<typename T>
+void random_sample(int64_t n_rows, int64_t n_cols, T (*V), uint32_t seed) {
+    int i,j;
+    /*T Diag[n_cols-1];*/
+    T signu0;
+    T u[n_cols];
+    for (i=n_cols-1; i>=0; i--) {
+        RandBLAS::dense_op::gen_rmat_norm<T>(1, i+1, u, seed);
+        signu0 = sgn<T>(u[0]);
+        u[0] = u[0] + signu0 * blas::nrm2(i+1,u,1);
+        lapack::larf(lapack::Side::Left, i+1, n_rows, u, 1, 2, &V[n_cols-i+1], n_cols);
+        blas::scal(n_rows, signu0, &V[n_cols-i+1], n_cols);
+    }
+   
+
+
+}
+
+template <typename T> T sgn(T val) {
+    return (T(0) < val) - (val < T(0));
+}
+
+/*TODO: Use RandBLAS to sample from the gaussian distribution */

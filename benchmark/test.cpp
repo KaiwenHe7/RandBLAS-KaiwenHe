@@ -46,11 +46,19 @@ double dotprod(T (*array)[len]){
     return blas::dot(3, &(*array)[0], 1, &(*array)[9],1);
 }
 
+template<typename T>
+void test_passpartofarr(int64_t len, T *array){
+    for (int i=0; i<len; i++){
+        std::cout << array[i] << "\n";
+    }
+}
+
 int main( int argc, char *argv[] ) {
     int i;
 
     /*double V[3][4] = {{0,1,2,3}, {4,5,6,7}, {8,9,10,11}};*/
     double V[12] = {0,1,2,3,4,5,6,7,8,9,10,11};
+    double Vc[12] = {0,3,6,9,1,4,7,10,2,5,8,11};
     /*rot<double,12>(&V);*/
     /*for (i=0; i<10;i++){
         std::cout << V[i] << "\n";
@@ -73,8 +81,12 @@ int main( int argc, char *argv[] ) {
     for (i=0;i<4;i++){
         std::cout << C[i] << '\n';
     }*/
-    std::cout << std::numeric_limits<double>::epsilon();
-
+    double u[2] = {1, 1};
+    lapack::larf(lapack::Side::Left, 2, 4, &u[0], 1, 2, &V[1], 3);
+    for (i=0; i<12; i++) {
+        std::cout << V[i] << '\n';
+    }
+    return 0;
 }
 
 template<typename T, size_t rows, size_t cols>
