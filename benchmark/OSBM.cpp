@@ -53,7 +53,18 @@ int main( int argc, char *argv[] ) {
     std::cout << "Max lev score diff:  " << levscore_test<double>(5,3,Vrm, ell) << '\n';
     std::cout << "Orthogonality test:  " << orthogonality_test<double>(5,3,Vrm) << '\n';
 
+    random_sample(5, 3, Vrm, 1);
+    std::cout << "Max lev score diff:  " << levscore_test<double>(5,3,Vrm, ell) << '\n';
+    std::cout << "Orthogonality test:  " << orthogonality_test<double>(5,3,Vrm) << '\n';
 
+    double u[3] = {1, 1, 1};
+    u[0] = u[0] + sgn<double>(u[0]) * blas::nrm2(3,u,1);
+    double norm = blas::nrm2(3, u, 1);
+    blas::scal(3, 1/norm, u, 1);
+    for (int i=0; i<3; ++i){
+        std::cout << u[i] << "\n";
+    }
+    return 0;
 }
 
 
@@ -365,14 +376,16 @@ void print_mat(double M[rows][cols]) {
 template<typename T>
 void random_sample(int64_t n_rows, int64_t n_cols, T (*V), uint32_t seed) {
     int i,j;
-    /*T Diag[n_cols-1];*/
     T signu0;
     T u[n_cols];
-    for (i=n_cols-1; i>=0; i--) {
+    T norm;
+    for (i=n_cols-1; i>0; i--) {
         RandBLAS::dense_op::gen_rmat_norm<T>(1, i+1, u, seed);
         signu0 = sgn<T>(u[0]);
         u[0] = u[0] + signu0 * blas::nrm2(i+1,u,1);
-        lapack::larf(lapack::Side::Left, i+1, n_rows, u, 1, 2, &V[n_cols-i+1], n_cols);
+        norm = blas::nrm2(i+1, u, 1);
+        blas::scal(i+1, 1/norm, u, 1);
+        lapack::larf(lapack::Side::Left, i+1, n_rows, &u[0], 1, 2, &V[n_cols-i-1], n_cols);
         blas::scal(n_rows, signu0, &V[n_cols-i+1], n_cols);
     }
    
