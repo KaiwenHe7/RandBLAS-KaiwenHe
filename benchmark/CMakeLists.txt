@@ -17,6 +17,10 @@ message(STATUS "Looking for LAPACK++ ...")
 find_package(lapackpp REQUIRED)
 message(STATUS "Done looking for LAPACK++.")
 
+message(STATUS "Looking for gtest ...")
+find_package(gtest REQUIRED)
+message(STATUS "Done looking for gtest")
+
 set(
     test_cxx
     test.cpp
