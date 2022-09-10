@@ -43,9 +43,8 @@ int check_majorization(int64_t n_rows, int64_t n_cols, T (*rownorms), T (*lev));
 template<typename T>
 void random_sample(int64_t n_rows, int64_t n_cols, T (*V), uint32_t seed);
 
-/*testing::TEST(OSBMtest, GenerateDoubleExamples) {
-    EXPECT_EQ(1,1);
-}*/
+template<typename T>
+int temp_test();
 
 int main( int argc, char *argv[] ) {
     /*double Vrm[18] = {0,0,0, 0,0,0, 0,0,0, 1,0,0, 0,1,0, 0,0,1};
@@ -58,36 +57,7 @@ int main( int argc, char *argv[] ) {
     random_sample(6, 3, Vrm, 1);
     std::cout << "Max lev score diff:  " << levscore_test<double>(6,3,Vrm, ell) << '\n';
     std::cout << "Orthogonality test:  " << orthogonality_test<double>(6,3,Vrm) << '\n';*/
-    int64_t n_cols = 10;
-    int64_t n_rows;
-    int i,j;
-    double sum, testsum;
-    for (n_rows = 50; n_rows < 101; n_rows += 10) {
-        double *V = new double[n_cols*n_rows];
-        double *lev = new double[n_rows];
-        std::fill(V, V+n_rows*n_cols, 0);
-        for (i=0; i<n_cols; i++) {
-            V[(n_rows-n_cols)*n_cols + i + i*n_cols] = 1;
-        }
-        RandBLAS::dense_op::gen_rmat_unif<double>(1, n_rows, lev, 0);
-        blas::scal(n_rows, 0.5, lev, 1); 
-        for (i=0; i<n_rows; i++) {
-            lev[i] += 0.5;
-            sum += lev[i];
-        }
-        blas::scal(n_rows, n_cols/sum, lev, 1);
-        std::sort(lev, lev+n_rows);
-        OSBMrmt<double>(n_rows, n_cols, V, lev);
-        std::cout << orthogonality_test(n_rows, n_cols, V) << '\n';
-        std::cout << levscore_test(n_rows, n_cols, V, lev) << '\n';
-        random_sample(n_rows, n_cols, V, 1);
-        std::cout << orthogonality_test(n_rows, n_cols, V) << '\n';
-        std::cout << levscore_test(n_rows, n_cols, V, lev) << '\n';
-        sum = 0;
-        delete[] V;
-        delete[] lev;
-    }
-    return 0;
+    return temp_test<double>();
 }
 
 
@@ -247,6 +217,7 @@ void OSBMrm(T (*V)[n_rows*n_cols], T (*lev)[n_rows]) {
     }
 }
 
+
 template<typename T>
 void OSBMrmt(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
     int its = 0;               /* Records number of iterations to convergence */
@@ -323,6 +294,8 @@ void OSBMrmt(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
 
     }
 }
+
+
 template<typename T>
 T levscore_test(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
     T max = abs((lev)[0] - blas::dot(n_cols, V, 1, V, 1));
@@ -348,9 +321,11 @@ T orthogonality_test(int64_t n_rows, int64_t n_cols, T (*V)) {
     for (i=0; i<n_cols*n_cols; i++){
         norm += pow(C[i],2);
     }
-    return norm;
+    return sqrt(norm);
 }
-
+//TODO: Run tests for cases where leverage scores are close to the boundary
+//TODO: Message Max or Parth on slack regarding gtesting errors
+//
 template<typename T>
 int check_levscores(int64_t n_rows, int64_t n_cols, T (*lev)) {
     T sum = 0;
@@ -399,24 +374,61 @@ void print_mat(double M[rows][cols]) {
     }
 }
 
+template<typename T>
+int temp_test() {
+    int64_t n_cols = 10;
+    int64_t n_rows;
+    int i,j;
+    double sum, testsum;
+    for (n_rows = 50; n_rows < 101; n_rows += 10) {
+        double *V = new double[n_cols*n_rows];
+        double *lev = new double[n_rows];
+        std::fill(V, V+n_rows*n_cols, 0);
+        for (i=0; i<n_cols; i++) {
+            V[(n_rows-n_cols)*n_cols + i + i*n_cols] = 1;
+        }
+        RandBLAS::dense_op::gen_rmat_unif<double>(1, n_rows, lev, 0);
+        blas::scal(n_rows, 0.5, lev, 1); 
+        for (i=0; i<n_rows; i++) {
+            lev[i] += 0.5;
+            sum += lev[i];
+        }
+
+        blas::scal(n_rows, n_cols/sum, lev, 1);
+        std::sort(lev, lev+n_rows);
+        OSBMrmt<double>(n_rows, n_cols, V, lev);
+        std::cout << "------------------------------------------------------" << '\n';                        /*Replace with Expect_EQ later*/
+        std::cout << "Test matrix size: " << n_cols << " by " << n_rows << '\n';
+        std::cout << "Orthogonality error:  " << orthogonality_test(n_rows, n_cols, V) << '\n';
+        std::cout << "Leverage score error:  " << levscore_test(n_rows, n_cols, V, lev) << '\n';
+        random_sample(n_rows, n_cols, V, 1);
+        std::cout << "Sampled Orthogonality error:  " << orthogonality_test(n_rows, n_cols, V) << '\n';
+        std::cout << "Sampled Leverage score error:  " << levscore_test(n_rows, n_cols, V, lev) << '\n';
+        sum = 0;
+        delete[] V;
+        delete[] lev;
+    }
+    std::cout << std::numeric_limits<double>::epsilon()*10*5;
+    return 0;
+}
 
 template<typename T>
 void random_sample(int64_t n_rows, int64_t n_cols, T (*V), uint32_t seed) {
     int i,j;
-    T signu0;
-    T u[n_cols];
-    T norm;
+    T signu0;              // Stores the sign of u[0] to avoid cancellation
+    T u[n_cols];           // vector u to store random normal values. Used in the construction of Householder.
+    T norm;                // Stores the norm of u to normalize u
     for (i=n_cols-1; i>0; i--) {
-        RandBLAS::dense_op::gen_rmat_norm<T>(1, i+1, u, seed);
-        signu0 = sgn<T>(u[0]);
+        RandBLAS::dense_op::gen_rmat_norm<T>(1, i+1, u, seed);  
+        signu0 = sgn<T>(u[0]);                  
         u[0] = u[0] + signu0 * blas::nrm2(i+1,u,1);
         norm = blas::nrm2(i+1, u, 1);
         blas::scal(i+1, 1/norm, u, 1);
-        lapack::larf(lapack::Side::Left, i+1, n_rows, &u[0], 1, 2, &V[n_cols-i-1], n_cols);
+        lapack::larf(lapack::Side::Left, i+1, n_rows, &u[0], 1, 2, &V[n_cols-i-1], n_cols); 
         blas::scal(n_rows, signu0, &V[n_cols-i+1], n_cols);
     }
 }
-
+//TODO: 1000 rows 100 cols
 template <typename T> T sgn(T val) {
     return (T(0) < val) - (val < T(0));
 }

@@ -186,3 +186,4 @@ TEST_F(TestApplyCscRowMaj, TwoThreads)
         }
     }
 }
+

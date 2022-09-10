@@ -1,7 +1,8 @@
 set(RandBLAS_cxx_srcs
     sjlts.cc
     util.cc
-    dense_op.cc)
+    dense_op.cc
+    osbm.cc)
 
 set(RandBLAS_libs RandBLAS_blaspp RandBLAS_Random123)
 

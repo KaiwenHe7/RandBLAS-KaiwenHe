@@ -101,3 +101,4 @@ TEST_F(TestDenseUniformOp, SimpleTest)
         test_unif_m_std<double>(seed, 203, 503);
     }
 }
+
