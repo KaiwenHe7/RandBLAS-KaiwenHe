@@ -1,5 +1,5 @@
 #include "dense_op.hh"
-
+#include "RandBLAS.hh"
 #include <iostream>
 #include <stdio.h>
 #include <omp.h>
@@ -180,7 +180,50 @@ void gen_rmat_norm(int64_t n_rows, int64_t n_cols, T* mat, uint32_t seed)
         }
 }
 
+/*template <typename T>
+void gen_rmat_haar(int64_t dim, T *C, int32_t seed) {
+    int i;
+    for (i=0; i<dim; i++){
+        `
+
+    }
+}*/
+
+/*template <typename T>
+T gen_rmat_haar(int64_t dim, int32_t seed) {
+    int i;
+    T C[dim*dim] = { 0 }; 
+    for (i=0; i<dim; i++) {
+        C[dim*i + i] = 1;
+    }
+    apply_haar<T>(dim, dim, C, seed);
+    return C;
+}*/
+    
+    
+
+template<typename T>
+void apply_haar(int64_t n_rows, int64_t n_cols, T *V, uint32_t seed) {
+    int i,j;
+    T signu0;              // Stores the sign of u[0] to avoid cancellation
+    T u[n_cols];           // vector u to store random normal values. Used in the construction of Householder.
+    T norm;                // Stores the norm of u to normalize u
+    for (i=n_cols-1; i>0; i--) {
+        RandBLAS::dense_op::gen_rmat_norm<T>(1, i+1, u, seed);  
+        signu0 = RandBLAS::osbm::sgn<T>(u[0]);                  
+        u[0] = u[0] + signu0 * blas::nrm2(i+1,u,1);
+        norm = blas::nrm2(i+1, u, 1);
+        blas::scal(i+1, 1/norm, u, 1);
+        RandBLAS::util::larf<T>('R', n_rows, i+1, &u[0], 1, 2, &V[n_cols-i-1], n_cols); 
+        blas::scal(n_rows, signu0, &V[n_cols-i+1], n_cols);
+    }
+}
+
+
 // Explicit instantiation of template functions - workaround to avoid header implementations
+template void apply_haar<float>(int64_t n_rows, int64_t n_cols, float *V, uint32_t seed);
+template void apply_haar<double>(int64_t n_rows, int64_t n_cols, double *V, uint32_t seed);
+
 template void gen_rmat_unif<float>(int64_t n_rows, int64_t n_cols, float* mat, uint32_t seed);
 template void gen_rmat_unif<double>(int64_t n_rows, int64_t n_cols, double* mat, uint32_t seed);
 

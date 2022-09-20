@@ -5,6 +5,23 @@
 
 using namespace RandBLAS::osbm;
 
+template<typename T>
+void random_sample(int64_t n_rows, int64_t n_cols, T (*V), uint32_t seed) {
+    int i,j;
+    T signu0;              // Stores the sign of u[0] to avoid cancellation
+    T u[n_cols];           // vector u to store random normal values. Used in the construction of Householder.
+    T norm;                // Stores the norm of u to normalize u
+    for (i=n_cols-1; i>0; i--) {
+        RandBLAS::dense_op::gen_rmat_norm<T>(1, i+1, u, seed);  
+        signu0 = RandBLAS::osbm::sgn<T>(u[0]);                  
+        u[0] = u[0] + signu0 * blas::nrm2(i+1,u,1);
+        norm = blas::nrm2(i+1, u, 1);
+        blas::scal(i+1, 1/norm, u, 1);
+        RandBLAS::util::larf<T>('R', n_rows, i+1, &u[0], 1, 2, &V[n_cols-i-1], n_cols); 
+        blas::scal(n_rows, signu0, &V[n_cols-i+1], n_cols);
+    }
+}
+//TODO: ORGQR write a funciton that returns the explicit column orthonormal random sampling matrix
 TEST(TestOSBMConstruction, SimpleExample) {
     int64_t n_cols = 3;
     int64_t n_rows = 6;
@@ -12,8 +29,8 @@ TEST(TestOSBMConstruction, SimpleExample) {
     double lev[6] = {0.2, 0.3, 0.4, 0.6, 0.7, 0.8};
     OSBM<double>(n_rows,n_cols,V,lev);
 
-    EXPECT_LT(orthogonality_test<double>(n_rows, n_cols, V), (std::numeric_limits<double>::epsilon()*n_cols));
-    EXPECT_LT(levscore_test<double>(n_rows, n_cols, V, lev), (std::numeric_limits<double>::epsilon()*n_cols));
+    EXPECT_LT(orthogonality_test<double>(n_rows, n_cols, V), (std::numeric_limits<double>::epsilon()*n_cols*5));
+    EXPECT_LT(levscore_test<double>(n_rows, n_cols, V, lev), (std::numeric_limits<double>::epsilon()*n_cols*5));
 }
 
 TEST(TestOSBMConstruction, VaryRows_Double) {
@@ -36,8 +53,12 @@ TEST(TestOSBMConstruction, VaryRows_Double) {
         }
         blas::scal(n_rows, n_cols/sum, lev, 1);
         std::sort(lev, lev+n_rows);
-        RandBLAS::osbm::OSBM<double>(n_rows, n_cols, V, lev);
 
+        RandBLAS::osbm::OSBM<double>(n_rows, n_cols, V, lev);
+        EXPECT_LT(orthogonality_test<double>(n_rows, n_cols, V), (std::numeric_limits<double>::epsilon()*n_cols*5));
+        EXPECT_LT(levscore_test<double>(n_rows, n_cols, V, lev), (std::numeric_limits<double>::epsilon()*n_cols*5));
+
+        random_sample<double>(n_rows, n_cols, V, 1);
         EXPECT_LT(orthogonality_test<double>(n_rows, n_cols, V), (std::numeric_limits<double>::epsilon()*n_cols*5));
         EXPECT_LT(levscore_test<double>(n_rows, n_cols, V, lev), (std::numeric_limits<double>::epsilon()*n_cols*5));
 
@@ -72,6 +93,8 @@ TEST(TestOSBMConstruction, VaryRows_Float) {
 
         EXPECT_LT(orthogonality_test<float>(n_rows, n_cols, V), (std::numeric_limits<float>::epsilon()*n_cols*5));
         EXPECT_LT(levscore_test<float>(n_rows, n_cols, V, lev), (std::numeric_limits<float>::epsilon()*n_cols*5));
+
+
 
         sum = 0;
 
@@ -116,7 +139,23 @@ TEST(TestOSBMConstruction, BoundaryExample) {
     double lev[6] = {1e-16, 0.2, 0.5, 0.6, 0.7, 1-1e-16};
     OSBM(6,3,V,lev);
 
-    EXPECT_LT(orthogonality_test<double>(n_rows, n_cols, V), (std::numeric_limits<double>::epsilon()*n_cols));
-    EXPECT_LT(levscore_test<double>(n_rows, n_cols, V, lev), (std::numeric_limits<double>::epsilon()*n_cols));
+    EXPECT_LT(orthogonality_test<double>(n_rows, n_cols, V), (std::numeric_limits<double>::epsilon()*n_cols*5));
+    EXPECT_LT(levscore_test<double>(n_rows, n_cols, V, lev), (std::numeric_limits<double>::epsilon()*n_cols*5));
 }
+
+TEST(TestOSBMConstruction, RandomSample) {
+    int64_t n_cols = 3;
+    int64_t n_rows = 6;
+    double V[18] = {0,0,0, 0,0,0, 0,0,0, 1,0,0, 0,1,0, 0,0,1};
+    double lev[6] = {0.2, 0.3, 0.5, 0.6, 0.6, 0.8};
+    OSBM(6,3,V,lev);
+    EXPECT_LT(orthogonality_test<double>(n_rows, n_cols, V), (std::numeric_limits<double>::epsilon()*n_cols*5));
+    EXPECT_LT(levscore_test<double>(n_rows, n_cols, V, lev), (std::numeric_limits<double>::epsilon()*n_cols*5));
+
+    random_sample<double>(n_rows, n_cols, V, 2);
+    EXPECT_LT(orthogonality_test<double>(n_rows, n_cols, V), (std::numeric_limits<double>::epsilon()*n_cols*5));
+    EXPECT_LT(levscore_test<double>(n_rows, n_cols, V, lev), (std::numeric_limits<double>::epsilon()*n_cols*5));
+
+}
+
 

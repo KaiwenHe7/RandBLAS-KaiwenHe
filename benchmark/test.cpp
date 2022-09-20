@@ -53,39 +53,27 @@ void test_passpartofarr(int64_t len, T *array){
     }
 }
 
+template <typename T>
+void larfp(char side, int64_t m, int64_t n, T *v, int64_t incv, T tau, T *C, int64_t ldc) {
+    if (side == 'R') {
+        T w[m];
+        blas::gemv(blas::Layout::RowMajor, blas::Op::NoTrans, m, n, 1, C, ldc, v, incv, 0, w, 1);
+        blas::geru(blas::Layout::RowMajor, m, n, -1*tau, w, 1, v, incv, C, ldc);
+    }
+}
+
 int main( int argc, char *argv[] ) {
     int i;
 
-    /*double V[3][4] = {{0,1,2,3}, {4,5,6,7}, {8,9,10,11}};*/
     double V[12] = {0,1,2,3,4,5,6,7,8,9,10,11};
-    double Vc[12] = {0,3,6,9,1,4,7,10,2,5,8,11};
-    /*rot<double,12>(&V);*/
-    /*for (i=0; i<10;i++){
-        std::cout << V[i] << "\n";
-    }*/
-    /*std::cout << V[0][0];*/
-    /*double test[4] = {0,1,2,3};
-    double test2[4] = {8,9,10,11};
-    blas::rot(4,(&test)[0],1,(&test2)[0],1,0.1,0.8);
-    std::cout << test2[3];*/
-    /*blas::rot(4,(&V)[0],1,(&V)[5],1,0.1,0.8);
-    std::cout << V[0];*/
-    /*std::cout << blas::dot(3, &V[0], 1, &V[9],1) << '\n';
-    std::cout << dotprod<double,12>(&V);*/
-    /*int m = 3;
-    int n = 2;
-    double rmmatmul[6] = {1,2, 3,4, 5,6};
-    double rmmatmulT[6] = {1,3,5, 2,4,6};
-    double C[4];
-    blas::gemm(blas::Layout::RowMajor, blas::Op::Trans, blas::Op::NoTrans, n, n, m, 1, rmmatmul, n, rmmatmul, n, 0, C, n);
-    for (i=0;i<4;i++){
-        std::cout << C[i] << '\n';
-    }*/
-    double u[2] = {1, 1};
-    lapack::larf(lapack::Side::Left, 2, 4, &u[0], 1, 2, &V[1], 3);
+    double w[3] = {1};
+    larfp<double>('R', 4,1,w,1,2,&V[2],3);
     for (i=0; i<12; i++) {
         std::cout << V[i] << '\n';
     }
+    
+
+    
     return 0;
 }
 
