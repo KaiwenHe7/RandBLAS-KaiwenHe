@@ -132,11 +132,11 @@ T levscore_test(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
 }
 
 template<typename T>
-T orthogonality_test(int64_t n_rows, int64_t n_cols, T (*V)) {
+T orthogonality_test(int64_t n_rows, int64_t n_cols, T (*V), int64_t ldc) {
     int i,j;
     T norm = 0;
     T C[n_cols*n_cols];
-    blas::gemm(blas::Layout::RowMajor, blas::Op::Trans, blas::Op::NoTrans, n_cols, n_cols, n_rows, 1, V, n_cols, V, n_cols, 0, C, n_cols);
+    blas::gemm(blas::Layout::RowMajor, blas::Op::Trans, blas::Op::NoTrans, n_cols, n_cols, n_rows, 1, V, ldc, V, ldc, 0, C, n_cols);
     for (i=0; i<n_cols; i++){
         C[i*n_cols + i] -= 1;
     }
@@ -155,8 +155,8 @@ T sgn(T val) {
 template float RandBLAS::osbm::sgn<float>(float val);
 template double RandBLAS::osbm::sgn<double>(double val);
 
-template float RandBLAS::osbm::orthogonality_test<float>(int64_t n_rows, int64_t n_cols, float *V);
-template double RandBLAS::osbm::orthogonality_test<double>(int64_t n_rows, int64_t n_cols, double *V);
+template float RandBLAS::osbm::orthogonality_test<float>(int64_t n_rows, int64_t n_cols, float *V, int64_t ldc);
+template double RandBLAS::osbm::orthogonality_test<double>(int64_t n_rows, int64_t n_cols, double *V, int64_t ldc);
 
 template float RandBLAS::osbm::levscore_test<float>(int64_t n_rows, int64_t n_cols, float *V, float *lev);
 template double RandBLAS::osbm::levscore_test<double>(int64_t n_rows, int64_t n_cols, double *V, double *lev);

@@ -18,7 +18,7 @@ template<typename T>
 T levscore_test(int64_t n_rows, int64_t n_cols, T (*V), T (*lev));
 
 template<typename T>
-T orthogonality_test(int64_t n_rows, int64_t n_cols, T (*V));
+T orthogonality_test(int64_t n_rows, int64_t n_cols, T (*V), int64_t ldc);
 
 template<typename T>
 int check_majorization(int64_t n_rows, int64_t n_cols, T (*rownorms), T (*lev));

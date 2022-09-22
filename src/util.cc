@@ -76,28 +76,9 @@ void larf(char side, int64_t m, int64_t n, T *v, int64_t incv, T tau, T *C, int6
     }*/
 }
 
-/*template<typename T>
-void random_sample(int64_t n_rows, int64_t n_cols, T (*V), uint32_t seed) {
-    int i,j;
-    T signu0;              // Stores the sign of u[0] to avoid cancellation
-    T u[n_cols];           // vector u to store random normal values. Used in the construction of Householder.
-    T norm;                // Stores the norm of u to normalize u
-    for (i=n_cols-1; i>0; i--) {
-        RandBLAS::dense_op::gen_rmat_norm<T>(1, i+1, u, seed);  
-        signu0 = RandBLAS::osbm::sgn<T>(u[0]);                  
-        u[0] = u[0] + signu0 * blas::nrm2(i+1,u,1);
-        norm = blas::nrm2(i+1, u, 1);
-        blas::scal(i+1, 1/norm, u, 1);
-        RandBLAS::util::larf<T>('R', n_rows, i+1, &u[0], 1, 2, &V[n_cols-i-1], n_cols); 
-        blas::scal(n_rows, signu0, &V[n_cols-i+1], n_cols);
-    }
-}*/
 
 template void larf<float>(char side, int64_t m, int64_t n, float *v, int64_t incv, float tau, float *C, int64_t ldc);
 template void larf<double>(char side, int64_t m, int64_t n, double *v, int64_t incv, double tau, double *C, int64_t ldc);
-
-//template void random_sample<float>(int64_t n_rows, int64_t n_cols, float *V, uint32_t seed);
-//template void random_sample<double>(int64_t n_rows, int64_t n_cols, double *V, uint32_t seed);
 
 template void print_colmaj<float>(uint64_t n_rows, uint64_t n_cols, float *a, char label[]);
 template void print_colmaj<double>(uint64_t n_rows, uint64_t n_cols, double *a, char label[]);

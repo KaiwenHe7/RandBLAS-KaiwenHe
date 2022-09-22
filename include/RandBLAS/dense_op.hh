@@ -37,6 +37,12 @@ void gen_rmat_norm(
         uint32_t seed
         );
 
+template<typename T>
+void apply_haar(int64_t n_rows, int64_t n_cols, T *mat, int64_t ldc, uint32_t seed);
+
+template<typename T>
+void gen_rmat_haar(int64_t n_rows, int64_t n_cols, T *mat, int64_t ldc, int32_t seed);
+
 } // end namespace RandBLAS::dense_op
 
 #endif  // define RandBLAS_UTIL_HH
