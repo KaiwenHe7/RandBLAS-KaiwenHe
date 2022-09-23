@@ -33,6 +33,16 @@ void printval(T (*array)[rows][cols]){
     }*/
     /*double* critrow = (*array)[2];*/
    /* std::cout << array[0][1] << "\n";*/
+
+    double C[20];
+    RandBLAS::dense_op::apply_haar<double>(5, 4, C, 4, 2);
+    for (i=0; i<5; i++) {
+        for (j=0; j<4; j++) {
+            std::cout << C[5*i + j] << " | ";
+        }
+        std::cout << '\n';
+    }
+
 }
 
 template<typename T, size_t len>

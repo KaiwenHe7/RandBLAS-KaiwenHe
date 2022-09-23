@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include <random>
 
+using namespace RandBLAS::dense_op;
+
 template<typename T, size_t rows, size_t cols>
 void print_mat(double M[rows][cols]); 
 
@@ -57,7 +59,19 @@ int main( int argc, char *argv[] ) {
     random_sample(6, 3, Vrm, 1);
     std::cout << "Max lev score diff:  " << levscore_test<double>(6,3,Vrm, ell) << '\n';
     std::cout << "Orthogonality test:  " << orthogonality_test<double>(6,3,Vrm) << '\n';*/
-    return temp_test<double>();
+    int i,j;
+    //return temp_test<double>();
+    double C[25];
+    RandBLAS::dense_op::gen_rmat_haar<double>(5, 5, &C[0], 5, 2);
+    RandBLAS::dense_op::apply_haar<double>(5,2,&C[1],5,2);
+    for (i=0; i<5; i++) {
+        std::cout << " | ";
+        for (j=0; j<5; j++) {
+            std::cout << C[5*i + j] << " | ";
+        }
+        std::cout << '\n';
+    }
+    return 0;
 }
 
 
