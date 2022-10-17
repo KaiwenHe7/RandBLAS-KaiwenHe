@@ -63,7 +63,6 @@ int main( int argc, char *argv[] ) {
     //return temp_test<double>();
     double C[25];
     RandBLAS::dense_op::gen_rmat_haar<double>(5, 5, &C[0], 5, 2);
-    RandBLAS::dense_op::apply_haar<double>(5,2,&C[1],5,2);
     for (i=0; i<5; i++) {
         std::cout << " | ";
         for (j=0; j<5; j++) {

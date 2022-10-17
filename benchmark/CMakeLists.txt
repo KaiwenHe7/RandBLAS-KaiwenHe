@@ -36,6 +36,20 @@ target_link_libraries(
 )
 
 set(
+    bench_sjlts_cxx
+    bench_sjlts.cpp
+)
+add_executable(
+    bench_sjlts  ${bench_sjlts_cxx}
+)
+target_include_directories(
+    bench_sjlts PUBLIC ${Random123_DIR}
+)
+target_link_libraries(
+    bench_sjlts PUBLIC RandBLAS blaspp lapackpp 
+)
+
+set(
     OSBM_cxx
     OSBM.cpp
 )
