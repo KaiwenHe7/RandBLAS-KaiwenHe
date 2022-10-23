@@ -61,7 +61,7 @@ int main( int argc, char *argv[] ) {
     std::cout << "Orthogonality test:  " << orthogonality_test<double>(6,3,Vrm) << '\n';*/
     int i,j;
     //return temp_test<double>();
-    double C[25];
+    /*double C[25];
     RandBLAS::dense_op::gen_rmat_haar<double>(5, 5, &C[0], 5, 2);
     for (i=0; i<5; i++) {
         std::cout << " | ";
@@ -69,7 +69,7 @@ int main( int argc, char *argv[] ) {
             std::cout << C[5*i + j] << " | ";
         }
         std::cout << '\n';
-    }
+    }*/
     return 0;
 }
 

@@ -21,7 +21,7 @@ void gen_kspiked_lev(T *lev, int64_t n_rows, int64_t n_cols);
 
 void gen_sjlts(RandBLAS::sjlts::SJLT *S, uint64_t n_rows, uint64_t n_cols, uint64_t vec_nnz);
 
-void vary_nnz(double *err, int64_t m, int64_t n, int64_t d, int64_t len);
+void vary_nnz(double *A, double *err, int64_t m, int64_t n, int64_t d, int64_t len);
 
 void print_vec(double *vec, int64_t len);
 
@@ -33,20 +33,23 @@ double subspace_distortion(double *SU, int64_t n_rows, int64_t n_cols);
 
 int main() {
     
-    int64_t d = 50;          // number of rows for the sketching matrix
-    int64_t m = 201;         // number of rows for the test matrix
-    int64_t n = 20;          // number of columns for the test matrix
+    int64_t d = 200;          // number of rows for the sketching matrix
+    int64_t m = 10000;         // number of rows for the test matrix
+    int64_t n = 75;          // number of columns for the test matrix
+
+    double A[m*n];
+    double lev[m];
+    gen_osbm<double>(A, lev, gen_kspiked_lev, m, n);
     
     double err_nnz[10];
-    vary_nnz(err_nnz, m, n, d, 10);
+    vary_nnz(A, err_nnz, m, n, d, 10);
         
     /*double vary_d_err[14];
-    vary_d(vary_d_err, m, n, 14);*/
+    vary_d(A, vary_d_err, m, n, 14);*/
     
     /*double A[m*n];
     double lev[m];
-    gen_osbm<double>(A, lev, gen_kspiked_lev, m, n);
-    std::cout << cond(A, m, n) << '\n';*/
+    gen_osbm<double>(A, lev, gen_rvec_lev, m, n);*/
 
     return 0;
 }
@@ -76,12 +79,13 @@ void gen_sjlts(RandBLAS::sjlts::SJLT *S, uint64_t n_rows_sketched, uint64_t n_co
     }
 }
 
-void vary_nnz(double *err, int64_t m, int64_t n, int64_t d, int64_t len) {
-    double A[m*n];
-    double lev[m];
+void vary_nnz(double *A, double *err, int64_t m, int64_t n, int64_t d, int64_t len) {
+    //double A[m*n];
+    //double lev[m];
     double SA[d*n];
-    gen_osbm<double>(A, lev, gen_kspiked_lev, m, n);
-    std::cout << "Matrix norm error from varying nnz per col" << '\n';
+    //gen_osbm<double>(A, lev, gen_rvec_lev, m, n);
+    std::cout << "Spiked leverage scores" << '\n';
+    std::cout << "Subspace distortion from varying nnz per col fixing sketch dim = 150" << '\n';
     for (uint64_t nnz = 1; nnz < len+1; nnz++) {
         RandBLAS::sjlts::SJLT *S = new RandBLAS::sjlts::SJLT;
         gen_sjlts(S, d, m, nnz);
@@ -95,19 +99,20 @@ void vary_nnz(double *err, int64_t m, int64_t n, int64_t d, int64_t len) {
     }
 }
 
-/*void vary_d(double *err, int64_t m, int64_t n, int64_t len){
-    double A[m*n];
+void vary_d(double *A, double *err, int64_t m, int64_t n, int64_t len){
+    /*double A[m*n];
     double lev[m];
-    gen_rmat_osbm<double>(A, lev, m, n);
+    gen_osbm<double>(A, lev, gen_rvec_lev, m, n);*/
     int ind = 0; 
-    std::cout << "Matrix norm error from varying sketch dim" << '\n';
+    std::cout << "Spiked leverage scores" << '\n';
+    std::cout << "Subspace distortion from varying sketch dim fixing nnz = 2" << '\n';
     for (uint64_t d = n+10; d < len*10+n+1; d += 10) {
 
         RandBLAS::sjlts::SJLT *S = new RandBLAS::sjlts::SJLT;
         double *SA = new double[d*n];
         std::fill(SA, SA+d*n, 0);
 
-        gen_sjlts(S, d, m, 1);
+        gen_sjlts(S, d, m, 2);
         
         RandBLAS::sjlts::sketch_cscrow(*S, n, A, SA, 1);
         err[ind] = subspace_distortion(SA, d, n); 
@@ -118,7 +123,7 @@ void vary_nnz(double *err, int64_t m, int64_t n, int64_t d, int64_t len) {
         delete S;
     }
 
-}*/
+}
 
 void print_vec(double *vec, int64_t len){
     for (int i = 0; i < len; i++){
@@ -173,7 +178,7 @@ void gen_rvec_lev(T *lev, int64_t n_rows, int64_t n_cols) {
 template<typename T>
 void gen_kspiked_lev(T *lev, int64_t n_rows, int64_t n_cols) {
     int i;
-    int k = 5;
+    int k = 20;
     gen_rvec_lev(&(lev[2*k]), n_rows-2*k, n_cols-k);
     for (i=0; i < k; i++) {
         lev[i] = 0.99999;
