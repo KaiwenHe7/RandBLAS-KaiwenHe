@@ -20,15 +20,16 @@ void OSBM(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
     if (check_levscores<T>(n_rows, n_cols, lev) == -1){
         throw std::invalid_argument("Leverage scores are invalid");
     }
-
+    
+    std::fill(rownorms, rownorms+n_rows, 0);
+    for (a = n_cols; a < n_rows; a++) {
+        rownorms[a] = 1;
+    }
+    
     while(true) {
         cond = false;
         ccond = true;
 
-        for (a=0; a<n_rows; a++){      /* updates colnorms to store col norms of V at each iteration */
-            rownorms[a] = blas::dot(n_cols, &(V)[a*n_cols], 1, &(V)[a*n_cols], 1);
-        }
-        
         if (its==0 && check_majorization<T>(n_rows, n_cols, rownorms, lev)==-1){
             throw std::invalid_argument("Matrix row norms do not majorize the leverage scores");
         }
@@ -70,11 +71,15 @@ void OSBM(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
             cos = 1/sqrt(1 + pow(t,2));
             sin = cos*t;
             blas::rot(n_cols, &(V)[i*n_cols], 1, &(V)[j*n_cols],1, cos, sin);
+            rownorms[i] = lev[i];
+            rownorms[j] = blas::dot(n_cols, &(V)[j*n_cols], 1, &(V)[j*n_cols], 1);
         } else {
             t = (-sgn<T>(r_ij)*r_ij - sqrt(pow(r_ij,2) - (r_ii -  (lev)[j])*(r_jj - (lev)[j]))) / (r_ii - (lev)[j]);
             cos = 1/sqrt(1 + pow(t,2));
             sin = cos*t;
             blas::rot(n_cols, &(V)[i*n_cols], 1, &(V)[j*n_cols],1, cos, sin);
+            rownorms[i] = blas::dot(n_cols, &(V)[i*n_cols], 1, &(V)[i*n_cols], 1);
+            rownorms[j] = lev[j];
         }
 
         its += 1;
