@@ -25,31 +25,36 @@ void vary_nnz(double *A, double *err, int64_t m, int64_t n, int64_t d, int64_t l
 
 void print_vec(double *vec, int64_t len);
 
-void vary_d(double *err, int64_t m, int64_t n, int64_t len);
+void vary_d(double *A, double *err, int64_t m, int64_t n, int64_t len);
 
 double cond(double *A, int64_t n_rows, int64_t n_cols);
 
 double subspace_distortion(double *SU, int64_t n_rows, int64_t n_cols);
 
 int main() {
-    
-    int64_t d = 200;          // number of rows for the sketching matrix
-    int64_t m = 10000;         // number of rows for the test matrix
-    int64_t n = 75;          // number of columns for the test matrix
+    int i; 
+    int64_t d = 600;          // number of rows for the sketching matrix
+    int64_t m = 10000;
+    int64_t n = 200;
 
-    double A[m*n];
-    double lev[m];
-    gen_osbm<double>(A, lev, gen_kspiked_lev, m, n);
-    
+    //double V[m*n];
+    //double ell[m];
+    double *V = new double[m*n];
+    double *ell = new double[m];
+    gen_osbm(V, ell, gen_rvec_lev ,m, n);
+
     double err_nnz[10];
-    vary_nnz(A, err_nnz, m, n, d, 10);
+    vary_nnz(V, err_nnz, m, n, d, 10);
         
-    /*double vary_d_err[14];
-    vary_d(A, vary_d_err, m, n, 14);*/
+    double vary_d_err[14];
+    vary_d(V, vary_d_err, m, n, 14);
     
     /*double A[m*n];
     double lev[m];
     gen_osbm<double>(A, lev, gen_rvec_lev, m, n);*/
+
+    delete[] V;
+    delete[] ell;
 
     return 0;
 }
@@ -94,6 +99,8 @@ void vary_nnz(double *A, double *err, int64_t m, int64_t n, int64_t d, int64_t l
         RandBLAS::sjlts::sketch_cscrow(*S, n, A, SA, 1);
         err[nnz-1] = subspace_distortion(SA, d, n);
         std::cout << "nnz = " << nnz << ":  " << err[nnz-1] << '\n'; 
+        
+        std::cout << "Condition number, nnz = " << nnz << ":  " << cond(SA, d, n) << '\n'; 
 
         delete S;
     }
@@ -105,14 +112,14 @@ void vary_d(double *A, double *err, int64_t m, int64_t n, int64_t len){
     gen_osbm<double>(A, lev, gen_rvec_lev, m, n);*/
     int ind = 0; 
     std::cout << "Spiked leverage scores" << '\n';
-    std::cout << "Subspace distortion from varying sketch dim fixing nnz = 2" << '\n';
+    std::cout << "Subspace distortion from varying sketch dim fixing nnz = 4" << '\n';
     for (uint64_t d = n+10; d < len*10+n+1; d += 10) {
 
         RandBLAS::sjlts::SJLT *S = new RandBLAS::sjlts::SJLT;
         double *SA = new double[d*n];
         std::fill(SA, SA+d*n, 0);
 
-        gen_sjlts(S, d, m, 2);
+        gen_sjlts(S, d, m, 4);
         
         RandBLAS::sjlts::sketch_cscrow(*S, n, A, SA, 1);
         err[ind] = subspace_distortion(SA, d, n); 

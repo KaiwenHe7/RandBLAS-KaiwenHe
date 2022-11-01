@@ -42,21 +42,97 @@ void random_sample(int64_t n_rows, int64_t n_cols, T (*V), uint32_t seed);
 template<typename T>
 int temp_test();
 
+template<typename T>
+void OSBMbs(int64_t n_rows, int64_t n_cols, T (*V), T (*lev));
+
+template<typename T>
+void gen_osbm(T *V, T *lev, int64_t n_rows, int64_t n_cols);
+
 int main( int argc, char *argv[] ) {
-    double Vrm[18] = {0,0,0, 0,0,0, 0,0,0, 1,0,0, 0,1,0, 0,0,1};
-    double ell[6] = {0.2, 0.2, 0.5, 0.6, 0.6, 0.9};
-    OSBM<double>(6,3,Vrm,ell); 
-    std::cout << orthogonality_test(6,3,Vrm) << '\n';
-    std::cout << levscore_test(6,3,Vrm,ell) << '\n';
+    int64_t n_rows = 5;
+    int64_t n_cols = 3;
+    int i;
+    double V[15] = {0,0,0, 0,0,0, 1,0,0, 0,1,0, 0,0,1};
+    double lev[5] = {0.4, 0.5, 0.6, 0.6, 0.9};
+    OSBMbs(5,3,V,lev);
+
+    for (i=0; i < 15; i++) {
+        std::cout << V[i] << '\n';
+    }
+    std::cout << "---------------" << '\n';
+    std::cout << orthogonality_test(n_rows,n_cols,V) << '\n';
+    std::cout << levscore_test(n_rows,n_cols,V,lev) << '\n';
     return 0;
 }
 
+template<typename T>
+void OSBMbs(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
+    int its = 0;               /* Records number of iterations to convergence */
+    int a;
+    int i,j;                   /* Stores indices of rows that satisfies majorization condition */
+    bool breakcond = false;          /* cond indicates if the majorization condition has found two indices i,j
+                                  ccond helps to break the loop if an innerloop is not satisfied  */
+    T r_ii, r_jj, r_ij;        /* values used to compute cos and sin for the givens rotation */
+    T t, cos, sin;           
+    T rownorms[n_rows];        /* Array to hold row norms of V at each iteration */
+
+    if (check_levscores<T>(n_rows, n_cols, lev) == -1){
+        throw std::invalid_argument("Leverage scores are invalid");
+    }
+    
+    std::fill(rownorms, rownorms+n_rows, 0);
+    for (a = n_cols-1; a < n_rows; a++) {
+        rownorms[a] = 1;
+    }
+
+    if (its==0 && check_majorization<T>(n_rows, n_cols, rownorms, lev)==-1){
+        throw std::invalid_argument("Matrix row norms do not majorize the leverage scores");
+    }
+
+    i = n_rows - n_cols - 1;
+    j = n_rows - n_cols;
+
+    for (its = 0; its<n_rows; its++) {
+
+        if (i == 0 && j==(n_rows-1)) {
+            std::cout << "hi" << '\n';
+            breakcond = true;
+        }
+
+        r_ii = rownorms[i];      // dot(row[i], row[i])
+        r_jj = rownorms[j];      // dot(row[j], row[j])
+        r_ij = blas::dot(n_cols, &(V)[i*n_cols], 1, &(V)[j*n_cols], 1);    //dot(row[i], row[j])
+
+        if ((lev)[i] - r_ii < r_jj - (lev)[j]) {
+            t = (sgn<T>(r_ij)*r_ij + sqrt(pow(r_ij,2) - (r_ii - (lev)[i])*(r_jj - (lev)[i]))) / (r_jj - (lev)[i]);
+            cos = 1/sqrt(1 + pow(t,2));
+            sin = cos*t;
+            blas::rot(n_cols, &(V)[i*n_cols], 1, &(V)[j*n_cols],1, cos, sin);
+            rownorms[i] = lev[i];
+            rownorms[j] = blas::dot(n_cols, &(V)[j*n_cols], 1, &(V)[j*n_cols], 1);
+            i = i - 1;
+        } else {
+            t = (-sgn<T>(r_ij)*r_ij - sqrt(pow(r_ij,2) - (r_ii -  (lev)[j])*(r_jj - (lev)[j]))) / (r_ii - (lev)[j]);
+            cos = 1/sqrt(1 + pow(t,2));
+            sin = cos*t;
+            blas::rot(n_cols, &(V)[i*n_cols], 1, &(V)[j*n_cols],1, cos, sin);
+            rownorms[i] = blas::dot(n_cols, &(V)[i*n_cols], 1, &(V)[i*n_cols], 1);
+            rownorms[j] = lev[j];
+            j = j + 1;
+        }
+
+        if (breakcond) {
+            break;
+        }
+        
+    }
+}
 template<typename T>
 void OSBM(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
     int its = 0;               /* Records number of iterations to convergence */
     int a,b,c;                 /* Indexing variables */
     int i,j;                   /* Stores indices of rows that satisfies majorization condition */
-    bool cond, ccond;          /* cond indicates if the majorization condition has found two indices i,j
+    bool breakcond, nextcond;          /* cond indicates if the majorization condition has found two indices i,j
                                   ccond helps to break the loop if an innerloop is not satisfied  */
     T r_ii, r_jj, r_ij;        /* values used to compute cos and sin for the givens rotation */
     T t, cos, sin;           
@@ -72,8 +148,8 @@ void OSBM(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
     }
     
     while(true) {
-        cond = false;
-        ccond = true;
+        breakcond = false;  // If no pair i<j is found then we are done. Set breakcond = true
+        nextcond = true;    // If a pair i<j does not satisfy the condition then proceed for next i
 
         if (its==0 && check_majorization<T>(n_rows, n_cols, rownorms, lev)==-1){
             throw std::invalid_argument("Matrix row norms do not majorize the leverage scores");
@@ -81,66 +157,80 @@ void OSBM(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
 
         for (a=0; a<(n_rows-1); a++) {    
             for (b=a+1; b<n_rows; b++) {
-                if (((lev)[a] - rownorms[a] > std::numeric_limits<T>::epsilon()*n_cols) && (rownorms[b] - (lev)[b] > std::numeric_limits<T>::epsilon()*n_cols)) {
-                    ccond = true;
+                if (((lev)[a] - rownorms[a] > std::numeric_limits<T>::epsilon()*n_cols) 
+                        && (rownorms[b] - (lev)[b] > std::numeric_limits<T>::epsilon()*n_cols)) {
+                    nextcond = true;
                     for (c=a+1; c<b; c++) {
                         if (abs(rownorms[c] - (lev)[c]) > std::numeric_limits<T>::epsilon()*n_cols) {
-                            ccond = false;
+                            nextcond = false;
                             break;
                         }
                     }
-                    if (ccond == true) {
+                    if (nextcond == true) {
                         i = a;
                         j = b;
-                        cond = true;
+                        breakcond = true;
                         break;
                     }
                 }
                 
             }
-            if (cond == true) {
+            if (breakcond == true) {
                 break;
             }    
         } 
 
-        if (cond==false || its==n_rows) { 
+        if (breakcond==false || its==n_rows) { 
             break;
         }
 
-        r_ii = rownorms[i];
-        r_jj = rownorms[j];
-        r_ij = blas::dot(n_cols, &(V)[i*n_cols], 1, &(V)[j*n_cols], 1);
+        r_ii = rownorms[i];      // dot(row[i], row[i])
+        r_jj = rownorms[j];      // dot(row[j], row[j])
+        r_ij = blas::dot(n_cols, &(V)[i*n_cols], 1, &(V)[j*n_cols], 1);    //dot(row[i], row[j])
 
         if ((lev)[i] - r_ii < r_jj - (lev)[j]) {
             t = (sgn<T>(r_ij)*r_ij + sqrt(pow(r_ij,2) - (r_ii - (lev)[i])*(r_jj - (lev)[i]))) / (r_jj - (lev)[i]);
             cos = 1/sqrt(1 + pow(t,2));
             sin = cos*t;
             blas::rot(n_cols, &(V)[i*n_cols], 1, &(V)[j*n_cols],1, cos, sin);
-            //rownorms[i] = blas::dot(n_cols, &(V)[i*n_cols], 1, &(V)[i*n_cols], 1);
             rownorms[i] = lev[i];
             rownorms[j] = blas::dot(n_cols, &(V)[j*n_cols], 1, &(V)[j*n_cols], 1);
-            std::cout << "CASE 1-----------------------------" << '\n';
-            std::cout << "its " << its << ':' << '\n';
-            std::cout << "       " << "row " << i << ":" << "  rownorms[" << i << "]: " << rownorms[i] << ";  Lev[" << i << "]:" << lev[i] << '\n';     
-            std::cout << "       " << "row " << j << ":" << "  rownorms[" << j << "]: " << rownorms[j] << ";  Lev[" << j << "]:" << lev[j] << '\n';     
         } else {
             t = (-sgn<T>(r_ij)*r_ij - sqrt(pow(r_ij,2) - (r_ii -  (lev)[j])*(r_jj - (lev)[j]))) / (r_ii - (lev)[j]);
             cos = 1/sqrt(1 + pow(t,2));
             sin = cos*t;
             blas::rot(n_cols, &(V)[i*n_cols], 1, &(V)[j*n_cols],1, cos, sin);
             rownorms[i] = blas::dot(n_cols, &(V)[i*n_cols], 1, &(V)[i*n_cols], 1);
-            //rownorms[j] = blas::dot(n_cols, &(V)[j*n_cols], 1, &(V)[j*n_cols], 1);
             rownorms[j] = lev[j];
-            std::cout << "CASE 2-----------------------------" << '\n';
-            std::cout << "its " << its << ':' << '\n';
-            std::cout << "       " << "row " << i << ":" << "  rownorms[" << i << "]: " << rownorms[i] << ";  Lev[" << i << "]:" << lev[i] << '\n';     
-            std::cout << "       " << "row " << j << ":" << "  rownorms[" << j << "]: " << rownorms[j] << ";  Lev[" << j << "]:" << lev[j] << '\n';     
         }
 
         its += 1;
-        cond = false;
+        breakcond = false;
 
     }
+}
+
+template<typename T>
+void gen_osbm(T *V, T *lev, int64_t n_rows, int64_t n_cols) {
+    int i;
+    std::fill(V, V+n_rows*n_cols, 0);
+    std::cout << "Filled V" << '\n';
+    for (i=0; i<n_cols; i++) {
+        V[(n_rows-n_cols)*n_cols + i + i*n_cols] = 1;
+    }
+    std::cout << "V now [o, I]" << '\n';
+    T sum = 0;
+    RandBLAS::dense_op::gen_rmat_unif<double>(n_rows, 1, lev, 1);
+    std::cout << lev[n_rows-2] << '\n';
+    blas::scal(n_rows, 0.5, lev, 1); 
+    for (i=0; i<n_rows; i++) {
+        lev[i] += 0.5;
+        sum += lev[i];
+    }
+    blas::scal(n_rows, n_cols/sum, lev, 1);
+    std::sort(lev, lev+n_rows);
+    RandBLAS::osbm::OSBM<double>(n_rows, n_cols, V, lev);
+
 }
 
 template<typename T>
@@ -241,3 +331,12 @@ template <typename T> T sgn(T val) {
     return (T(0) < val) - (val < T(0));
 }
 
+/*            std::cout << "CASE 1-----------------------------" << '\n';
+            std::cout << "its " << its << ':' << '\n';
+            std::cout << "       " << "row " << i << ":" << "  rownorms[" << i << "]: " << rownorms[i] << ";  Lev[" << i << "]:" << lev[i] << '\n';     
+            std::cout << "       " << "row " << j << ":" << "  rownorms[" << j << "]: " << rownorms[j] << ";  Lev[" << j << "]:" << lev[j] << '\n';     
+
+            std::cout << "CASE 2-----------------------------" << '\n';
+            std::cout << "its " << its << ':' << '\n';
+            std::cout << "       " << "row " << i << ":" << "  rownorms[" << i << "]: " << rownorms[i] << ";  Lev[" << i << "]:" << lev[i] << '\n';     
+            std::cout << "       " << "row " << j << ":" << "  rownorms[" << j << "]: " << rownorms[j] << ";  Lev[" << j << "]:" << lev[j] << '\n';     */
