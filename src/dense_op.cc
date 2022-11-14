@@ -196,25 +196,25 @@ void apply_haar(int64_t n_rows, int64_t n_cols, T *mat, int64_t ldc, uint32_t se
         blas::scal(n_rows, signu0, &mat[n_cols-i+1], ldc);
     }
 }
-
+//
 template<typename T>
-void gen_rmat_haar(int64_t n_rows, int64_t n_cols, T *mat, int64_t ldc, int32_t seed) {
+void gen_rmat_haar(int64_t n_rows, int64_t n_cols, T *mat, int32_t seed) {
     int i;
-    for (i=0; i<ldc*ldc; i++) {
+    for (i=0; i<n_rows*n_cols; i++) {
         mat[i] = 0; 
     }
-    for (i=0;i<ldc; i++) {
-        mat[i*ldc + i] = 1;
+    for (i=0;i<n_cols; i++) {
+        mat[i*n_cols + i] = 1;
     }
-    apply_haar<T>(n_rows, n_cols, mat, ldc, seed);
+    apply_haar<T>(n_rows, n_cols, mat, n_cols, seed);
 }
 
 // Explicit instantiation of template functions - workaround to avoid header implementations
 template void apply_haar<float>(int64_t n_rows, int64_t n_cols, float *mat, int64_t ldc, uint32_t seed);
 template void apply_haar<double>(int64_t n_rows, int64_t n_cols, double *mat, int64_t ldc, uint32_t seed);
 
-template void gen_rmat_haar<float>(int64_t n_rows, int64_t n_cols, float *mat, int64_t ldc, int32_t seed);
-template void gen_rmat_haar<double>(int64_t n_rows, int64_t n_cols, double *mat, int64_t ldc, int32_t seed);
+template void gen_rmat_haar<float>(int64_t n_rows, int64_t n_cols, float *mat, int32_t seed);
+template void gen_rmat_haar<double>(int64_t n_rows, int64_t n_cols, double *mat, int32_t seed);
 
 template void gen_rmat_unif<float>(int64_t n_rows, int64_t n_cols, float* mat, uint32_t seed);
 template void gen_rmat_unif<double>(int64_t n_rows, int64_t n_cols, double* mat, uint32_t seed);

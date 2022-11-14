@@ -64,6 +64,20 @@ target_link_libraries(
 )
 
 set(
+    haarsample_cxx
+    haarsample.cpp
+)
+add_executable(
+    haarsample  ${haarsample_cxx}
+)
+target_include_directories(
+    haarsample PUBLIC ${Random123_DIR}
+)
+target_link_libraries(
+    haarsample PUBLIC RandBLAS blaspp lapackpp 
+)
+
+set(
     OSBM_cxx
     OSBM.cpp
 )

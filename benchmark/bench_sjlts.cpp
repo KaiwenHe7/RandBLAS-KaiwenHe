@@ -14,6 +14,9 @@ template<typename T>
 void gen_osbm(T *V, T *lev, void (*gen_lev)(T *lev, int64_t n_rows, int64_t n_cols), int64_t n_rows, int64_t n_cols);
 
 template<typename T>
+void gen_rperm_mat(T *V, int64_t n_rows, int64_t n_cols);
+
+template<typename T>
 void gen_rvec_lev(T *lev, int64_t n_rows, int64_t n_cols);
 
 template<typename T>
@@ -33,31 +36,29 @@ double subspace_distortion(double *SU, int64_t n_rows, int64_t n_cols);
 
 int main() {
     int i; 
-    int64_t d = 600;          // number of rows for the sketching matrix
+    int64_t d = 2000;          // number of rows for the sketching matrix
     int64_t m = 10000;
-    int64_t n = 200;
+    int64_t n = 1000;
 
-    //double V[m*n];
-    //double ell[m];
     double *V = new double[m*n];
     double *ell = new double[m];
-    gen_osbm(V, ell, gen_rvec_lev ,m, n);
+    gen_osbm(V, ell, gen_kspiked_lev ,m, n);
+
+    std::cout << RandBLAS::osbm::orthogonality_test<double>(m,n,V,n) << '\n';
+    std::cout << RandBLAS::osbm::levscore_test<double>(m,n,V,ell) << '\n';
 
     double err_nnz[10];
     vary_nnz(V, err_nnz, m, n, d, 10);
-        
-    double vary_d_err[14];
-    vary_d(V, vary_d_err, m, n, 14);
+       
+    /*double vary_d_err[14];
+    vary_d(V, vary_d_err, m, n, 14);*/
     
-    /*double A[m*n];
-    double lev[m];
-    gen_osbm<double>(A, lev, gen_rvec_lev, m, n);*/
-
     delete[] V;
     delete[] ell;
 
     return 0;
 }
+
 template<typename T>
 void gen_osbm(T *V, T *lev, void (*gen_lev)(T *lev, int64_t n_rows, int64_t n_cols), int64_t n_rows, int64_t n_cols) {
     int i;
@@ -66,11 +67,26 @@ void gen_osbm(T *V, T *lev, void (*gen_lev)(T *lev, int64_t n_rows, int64_t n_co
         V[(n_rows-n_cols)*n_cols + i + i*n_cols] = 1;
     }
     gen_lev(lev, n_rows, n_cols); 
-    RandBLAS::osbm::OSBM<double>(n_rows, n_cols, V, lev);
-
+    RandBLAS::osbm::OSBMtest<double>(n_rows, n_cols, V, lev);
 }
 
-void gen_sjlts(RandBLAS::sjlts::SJLT *S, uint64_t n_rows_sketched, uint64_t n_cols, uint64_t nnz){
+template<typename T>
+void gen_rperm_mat(T *V, int64_t n_rows, int64_t n_cols) {
+    int i;
+    std::fill(V, V+n_rows*n_cols, 0);
+    T *perm = new T[n_rows];
+    for (i = 0; i < n_rows; i++) {
+        perm[i] = i;
+    }
+    std::random_shuffle(perm, perm+n_rows);
+    for (i=0; i < n_cols; i++) {
+        V[n_cols*perm[i] + i] = 1.0;
+    }    
+
+    delete[] perm;
+}
+
+void gen_sjlts(RandBLAS::sjlts::SJLT *S, uint64_t n_rows_sketched, uint64_t n_cols, uint64_t nnz) {
     S->ori = RandBLAS::sjlts::ColumnWise;
     S->n_rows = n_rows_sketched;
     S->n_cols = n_cols;
@@ -85,14 +101,11 @@ void gen_sjlts(RandBLAS::sjlts::SJLT *S, uint64_t n_rows_sketched, uint64_t n_co
 }
 
 void vary_nnz(double *A, double *err, int64_t m, int64_t n, int64_t d, int64_t len) {
-    //double A[m*n];
-    //double lev[m];
-    double SA[d*n];
-    //gen_osbm<double>(A, lev, gen_rvec_lev, m, n);
-    std::cout << "Spiked leverage scores" << '\n';
-    std::cout << "Subspace distortion from varying nnz per col fixing sketch dim = 150" << '\n';
+    //double SA[d*n];
+    double *SA = new double[d*n];
+    RandBLAS::sjlts::SJLT *S = new RandBLAS::sjlts::SJLT;
     for (uint64_t nnz = 1; nnz < len+1; nnz++) {
-        RandBLAS::sjlts::SJLT *S = new RandBLAS::sjlts::SJLT;
+        //RandBLAS::sjlts::SJLT *S = new RandBLAS::sjlts::SJLT;
         gen_sjlts(S, d, m, nnz);
         
         std::fill(SA, SA+d*n, 0);
@@ -100,10 +113,12 @@ void vary_nnz(double *A, double *err, int64_t m, int64_t n, int64_t d, int64_t l
         err[nnz-1] = subspace_distortion(SA, d, n);
         std::cout << "nnz = " << nnz << ":  " << err[nnz-1] << '\n'; 
         
-        std::cout << "Condition number, nnz = " << nnz << ":  " << cond(SA, d, n) << '\n'; 
+        std::cout << "Condition number, nnz = " << nnz << ":  " << cond(SA, d, n) << '\n';
 
-        delete S;
     }
+    delete S;
+    delete[] SA;
+       
 }
 
 void vary_d(double *A, double *err, int64_t m, int64_t n, int64_t len){
@@ -129,7 +144,6 @@ void vary_d(double *A, double *err, int64_t m, int64_t n, int64_t len){
         delete[] SA;
         delete S;
     }
-
 }
 
 void print_vec(double *vec, int64_t len){
@@ -141,10 +155,10 @@ void print_vec(double *vec, int64_t len){
 double cond(double *A, int64_t n_rows, int64_t n_cols) {
     int i;
     double val;
-    std::complex<double> newA[n_rows*n_cols];
+    std::complex<double> *newA = new std::complex<double>[n_rows*n_cols];
     std::complex<double> *U = NULL;
     std::complex<double> *VT = NULL;
-    double S[n_cols];
+    double *S = new double[n_cols];
     for (i = 0; i < n_rows*n_cols; i++) {
         newA[i] = (std::complex<double>) A[i];
     }
@@ -160,6 +174,8 @@ double cond(double *A, int64_t n_rows, int64_t n_cols) {
             minval = val;
         }
     }
+    delete[] newA;
+    delete[] S;
     return maxval/minval;
 }
 
@@ -188,10 +204,10 @@ void gen_kspiked_lev(T *lev, int64_t n_rows, int64_t n_cols) {
     int k = 20;
     gen_rvec_lev(&(lev[2*k]), n_rows-2*k, n_cols-k);
     for (i=0; i < k; i++) {
-        lev[i] = 0.99999;
+        lev[i] = 0.9999999;
     }
     for (i=k; i < 2*k; i++) {
-        lev[i] = 0.00001;
+        lev[i] = 0.0000001;
     }
     std::sort(lev, lev+n_rows);
 }

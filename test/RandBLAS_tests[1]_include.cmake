@@ -1,0 +1,5 @@
+if(EXISTS "/Users/kaiwenhe/Projects/RandBLAS-KaiwenHe/test/RandBLAS_tests[1]_tests.cmake")
+  include("/Users/kaiwenhe/Projects/RandBLAS-KaiwenHe/test/RandBLAS_tests[1]_tests.cmake")
+else()
+  add_test(RandBLAS_tests_NOT_BUILT RandBLAS_tests_NOT_BUILT)
+endif()

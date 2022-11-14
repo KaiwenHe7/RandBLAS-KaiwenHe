@@ -138,6 +138,10 @@ TEST(TestOSBMConstruction, RandomSample) {
     RandBLAS::dense_op::apply_haar<double>(n_rows, n_cols, V, n_cols, 1);
     EXPECT_LT(orthogonality_test<double>(n_rows, n_cols, V, n_cols), (std::numeric_limits<double>::epsilon()*n_cols*5));
     EXPECT_LT(levscore_test<double>(n_rows, n_cols, V, lev), (std::numeric_limits<double>::epsilon()*n_cols*5));
+    
+    double C[25];
+    RandBLAS::dense_op::gen_rmat_haar(5, 4, C, 1);
+    EXPECT_LT(orthogonality_test<double>(5, 4, C, 5), (std::numeric_limits<double>::epsilon()*n_cols*5));
 }
 
 

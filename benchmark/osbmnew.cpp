@@ -43,22 +43,45 @@ template<typename T>
 int temp_test();
 
 template<typename T>
+void OSBMrmt(int64_t n_rows, int64_t n_cols, T (*V), T (*lev));
+
+template<typename T>
 void OSBMbs(int64_t n_rows, int64_t n_cols, T (*V), T (*lev));
 
 template<typename T>
 void gen_osbm(T *V, T *lev, int64_t n_rows, int64_t n_cols);
 
-int main( int argc, char *argv[] ) {
-    int64_t n_rows = 5;
-    int64_t n_cols = 3;
+template<typename T>
+void gen_rvec_lev(T *lev, int64_t n_rows, int64_t n_cols) {
     int i;
-    double V[15] = {0,0,0, 0,0,0, 1,0,0, 0,1,0, 0,0,1};
-    double lev[5] = {0.4, 0.5, 0.6, 0.6, 0.9};
-    OSBMbs(5,3,V,lev);
-
-    for (i=0; i < 15; i++) {
-        std::cout << V[i] << '\n';
+    T sum = 0;
+    RandBLAS::dense_op::gen_rmat_unif<double>(1, n_rows, lev, 0);
+    blas::scal(n_rows, 0.5, lev, 1); 
+    for (i=0; i<n_rows; i++) {
+        lev[i] += 0.5;
+        sum += lev[i];
     }
+    blas::scal(n_rows, n_cols/sum, lev, 1);
+    std::sort(lev, lev+n_rows);
+}
+
+int main( int argc, char *argv[] ) {
+    int64_t n_rows = 50;
+    int64_t n_cols = 10;
+    int i;
+    double V[n_rows*n_cols];
+    double lev[n_rows];
+    //double lev[6] = {0.1, 0.4, 0.5, 0.6, 0.6, 0.8};
+    gen_rvec_lev<double>(lev, n_rows, n_cols);
+    std::fill(V, V+n_rows*n_cols, 0);
+    for (i=0; i<n_cols; i++) {
+        V[(n_rows-n_cols)*n_cols + i + i*n_cols] = 1;
+    }
+    OSBMrmt<double>(n_rows,n_cols,V,lev);
+
+    /*for (i=0; i < 15; i++) {
+        std::cout << V[i] << '\n';
+    }*/
     std::cout << "---------------" << '\n';
     std::cout << orthogonality_test(n_rows,n_cols,V) << '\n';
     std::cout << levscore_test(n_rows,n_cols,V,lev) << '\n';
@@ -92,10 +115,10 @@ void OSBMbs(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
     i = n_rows - n_cols - 1;
     j = n_rows - n_cols;
 
-    for (its = 0; its<n_rows; its++) {
+    std::cout << "(" << i << ", " << j << ", " << 1 << ")" << '\n';
+    for (its = 0; its<n_rows-1; its++) {
 
-        if (i == 0 && j==(n_rows-1)) {
-            std::cout << "hi" << '\n';
+        if (i == 0 || j==(n_rows-1)) {
             breakcond = true;
         }
 
@@ -104,6 +127,8 @@ void OSBMbs(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
         r_ij = blas::dot(n_cols, &(V)[i*n_cols], 1, &(V)[j*n_cols], 1);    //dot(row[i], row[j])
 
         if ((lev)[i] - r_ii < r_jj - (lev)[j]) {
+            std::cout << "CASE 1" << '\n';
+            std::cout << "(" << i << ", " << j << ", " << 1 << ")" << '\n';
             t = (sgn<T>(r_ij)*r_ij + sqrt(pow(r_ij,2) - (r_ii - (lev)[i])*(r_jj - (lev)[i]))) / (r_jj - (lev)[i]);
             cos = 1/sqrt(1 + pow(t,2));
             sin = cos*t;
@@ -112,6 +137,8 @@ void OSBMbs(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
             rownorms[j] = blas::dot(n_cols, &(V)[j*n_cols], 1, &(V)[j*n_cols], 1);
             i = i - 1;
         } else {
+            std::cout << "CASE 2" << '\n';
+            std::cout << "(" << i << ", " << j << ", " << 2 << ")" << '\n';
             t = (-sgn<T>(r_ij)*r_ij - sqrt(pow(r_ij,2) - (r_ii -  (lev)[j])*(r_jj - (lev)[j]))) / (r_ii - (lev)[j]);
             cos = 1/sqrt(1 + pow(t,2));
             sin = cos*t;
@@ -127,6 +154,74 @@ void OSBMbs(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
         
     }
 }
+
+template<typename T>
+void OSBMrmt(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
+    int its = 0;               /* Records number of iterations to convergence */
+    int a,b,c;                 /* Indexing variables */
+    int i,j;                   /* Stores indices of rows that satisfies majorization condition */
+    bool cond, ccond;          /* cond indicates if the majorization condition has found two indices i,j
+                                  ccond helps to break the loop if an innerloop is not satisfied  */
+    T r_ii, r_jj, r_ij;        /* values used to compute cos and sin for the givens rotation */
+    T t, cos, sin;           
+    T rownorms[n_rows];        /* Array to hold row norms of V at each iteration */
+
+    if (check_levscores<T>(n_rows, n_cols, lev) == -1){
+        throw std::invalid_argument("Leverage scores are invalid");
+    }
+
+    i = n_rows - n_cols - 1;
+    j = n_rows - n_cols;
+
+    for (a = 0; a < n_rows; a++){
+        rownorms[a] = 0.0;
+    }
+    for (a = n_rows-n_cols; a < n_rows; a++) { 
+        rownorms[a] = 1.0;
+    }
+
+    while(true) {
+        cond = false;
+        ccond = true;
+
+        if (its==0 && check_majorization<T>(n_rows, n_cols, rownorms, lev)==-1){
+            throw std::invalid_argument("Matrix row norms do not majorize the leverage scores");
+        }
+
+        if (its==n_rows-1) { 
+            break;
+        }
+
+        r_ii = rownorms[i];
+        r_jj = rownorms[j];
+        r_ij = blas::dot(n_cols, &(V)[i*n_cols], 1, &(V)[j*n_cols], 1);
+
+        if ((lev)[i] - r_ii < r_jj - (lev)[j]) {
+            std::cout << "(" << i << ", " << j << ", " << 1 << ")" << '\n';
+            t = (r_ij + sqrt(pow(r_ij,2) - (r_ii - (lev)[i])*(r_jj - (lev)[i]))) / (r_jj - (lev)[i]);
+            cos = 1/sqrt(1 + pow(t,2));
+            sin = cos*t;
+            blas::rot(n_cols, &(V)[i*n_cols], 1, &(V)[j*n_cols],1, cos, sin);
+            rownorms[i] = lev[i];
+            rownorms[j] = blas::dot(n_cols, &(V)[j*n_cols], 1, &(V)[j*n_cols], 1);
+            i = i-1;
+        } else {
+            std::cout << "(" << i << ", " << j << ", " << 2 << ")" << '\n';
+            t = (-r_ij - sqrt(pow(r_ij,2) - (r_ii -  (lev)[j])*(r_jj - (lev)[j]))) / (r_ii - (lev)[j]);
+            cos = 1/sqrt(1 + pow(t,2));
+            sin = cos*t;
+            blas::rot(n_cols, &(V)[i*n_cols], 1, &(V)[j*n_cols],1, cos, sin);
+            rownorms[j] = lev[j];
+            rownorms[i] = blas::dot(n_cols, &(V)[i*n_cols], 1, &(V)[i*n_cols], 1);
+            j += 1;
+        }
+
+        its += 1;
+        cond = false;
+
+    }
+}
+
 template<typename T>
 void OSBM(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
     int its = 0;               /* Records number of iterations to convergence */
@@ -157,11 +252,11 @@ void OSBM(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
 
         for (a=0; a<(n_rows-1); a++) {    
             for (b=a+1; b<n_rows; b++) {
-                if (((lev)[a] - rownorms[a] > std::numeric_limits<T>::epsilon()*n_cols) 
-                        && (rownorms[b] - (lev)[b] > std::numeric_limits<T>::epsilon()*n_cols)) {
+                if (((lev)[a] - rownorms[a] > std::numeric_limits<T>::epsilon()*2) 
+                        && (rownorms[b] - (lev)[b] > std::numeric_limits<T>::epsilon()*2)) {
                     nextcond = true;
                     for (c=a+1; c<b; c++) {
-                        if (abs(rownorms[c] - (lev)[c]) > std::numeric_limits<T>::epsilon()*n_cols) {
+                        if (abs(rownorms[c] - (lev)[c]) > std::numeric_limits<T>::epsilon()*2) {
                             nextcond = false;
                             break;
                         }
@@ -189,6 +284,7 @@ void OSBM(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
         r_ij = blas::dot(n_cols, &(V)[i*n_cols], 1, &(V)[j*n_cols], 1);    //dot(row[i], row[j])
 
         if ((lev)[i] - r_ii < r_jj - (lev)[j]) {
+            std::cout << "(" << i << ", " << j << ", " << 1 << ")" << '\n';
             t = (sgn<T>(r_ij)*r_ij + sqrt(pow(r_ij,2) - (r_ii - (lev)[i])*(r_jj - (lev)[i]))) / (r_jj - (lev)[i]);
             cos = 1/sqrt(1 + pow(t,2));
             sin = cos*t;
@@ -196,6 +292,7 @@ void OSBM(int64_t n_rows, int64_t n_cols, T (*V), T (*lev)) {
             rownorms[i] = lev[i];
             rownorms[j] = blas::dot(n_cols, &(V)[j*n_cols], 1, &(V)[j*n_cols], 1);
         } else {
+            std::cout << "(" << i << ", " << j << ", " << 2 << ")" << '\n';
             t = (-sgn<T>(r_ij)*r_ij - sqrt(pow(r_ij,2) - (r_ii -  (lev)[j])*(r_jj - (lev)[j]))) / (r_ii - (lev)[j]);
             cos = 1/sqrt(1 + pow(t,2));
             sin = cos*t;
