@@ -34,27 +34,135 @@ double cond(double *A, int64_t n_rows, int64_t n_cols);
 
 double subspace_distortion(double *SU, int64_t n_rows, int64_t n_cols);
 
-int main() {
+/*int main() {
     int i; 
-    int64_t d = 2000;          // number of rows for the sketching matrix
-    int64_t m = 10000;
+    int64_t d = 3000;           //number of rows for the sketching matrix
+    int64_t m = 100000;
     int64_t n = 1000;
 
+    std::cout << "Test mat dim = (" << m << ", " << n << ")" << '\n';
+    std::cout << "Sketching dim = " << d << '\n';
     double *V = new double[m*n];
     double *ell = new double[m];
-    gen_osbm(V, ell, gen_kspiked_lev ,m, n);
+    gen_rperm_mat<double>(V, m, n);
+    //gen_osbm<double>(V, ell, gen_rvec_lev ,m, n);
 
-    std::cout << RandBLAS::osbm::orthogonality_test<double>(m,n,V,n) << '\n';
-    std::cout << RandBLAS::osbm::levscore_test<double>(m,n,V,ell) << '\n';
+    std::cout << "Orthogonality test:  " << RandBLAS::osbm::orthogonality_test<double>(m,n,V,n) << '\n';
+    //std::cout << RandBLAS::osbm::levscore_test<double>(m,n,V,ell) << '\n';
 
     double err_nnz[10];
     vary_nnz(V, err_nnz, m, n, d, 10);
        
-    /*double vary_d_err[14];
-    vary_d(V, vary_d_err, m, n, 14);*/
+    //double vary_d_err[14];
+    //vary_d(V, vary_d_err, m, n, 14);
     
     delete[] V;
     delete[] ell;
+
+    return 0;
+}*/
+
+/*int main(){
+    int i;
+    int64_t d = 2000;           //number of rows for the sketching matrix
+    int64_t m = 10000;
+    int64_t n = 100;
+    long double *ldV = new long double[m*n];
+    double *dV = new double[m*n];
+    long double *ldlev = new long double[m];
+    double *dlev = new double[m];
+
+    std::fill(dV, dV+n*m, 0);
+    std::fill(ldV, ldV+n*m, 0);
+    for (i=0; i<n; i++) {
+        dV[(m-n)*n + i + i*n] = 1;
+        ldV[(m-n)*n + i + i*n] = 1;
+    }
+
+    double sum = 0;
+    RandBLAS::dense_op::gen_rmat_unif<double>(1, m, dlev, 0);
+    blas::scal(m, 0.5, dlev, 1); 
+    for (i=0; i<m; i++) {
+        dlev[i] += 0.5;
+        sum += dlev[i];
+    }
+    blas::scal(m, n/sum, dlev, 1);
+    std::sort(dlev, dlev+m);
+
+    for (i=0; i<m; i++) {
+        ldlev[i] = (long double)dlev[i];
+    }
+
+    double *dt = new double[m];
+    long double *ldt = new long double[m];
+
+    //RandBLAS::osbm::OSBMtest<double>(m, n, dV, dlev, dt);
+    RandBLAS::osbm::OSBMtest<long double>(m, n, ldV, ldlev, ldt);
+
+    delete[] ldV;
+    delete[] dV;
+    delete[] ldlev;
+    delete[] dlev;
+    delete[] dt;
+    delete[] ldt;
+
+    return 0;
+}*/
+
+int main(){
+    int i;
+    int64_t d = 200;           //number of rows for the sketching matrix
+    int64_t m = 1000;
+    int64_t n = 100;
+    double *dV = new double[m*n];
+    float *fV = new float[m*n];
+    double *dlev = new double[m];
+    float *flev = new float[m];
+
+    std::fill(dV, dV+n*m, 0);
+    std::fill(fV, fV+n*m, 0);
+    for (i=0; i<n; i++) {
+        dV[(m-n)*n + i + i*n] = 1;
+        fV[(m-n)*n + i + i*n] = 1;
+    }
+
+    double sum = 0;
+    RandBLAS::dense_op::gen_rmat_unif<double>(1, m, dlev, 0);
+    blas::scal(m, 0.5, dlev, 1); 
+    for (i=0; i<m; i++) {
+        dlev[i] += 0.5;
+        sum += dlev[i];
+    }
+    blas::scal(m, n/sum, dlev, 1);
+    std::sort(dlev, dlev+m);
+
+    for (i=0; i<m; i++) {
+        flev[i] = (float)dlev[i];
+    }
+
+    double *dt = new double[m];
+    float *ft = new float[m];
+
+    RandBLAS::osbm::OSBMtest<double>(m, n, dV, dlev, dt);
+    RandBLAS::osbm::OSBMtest<float>(m, n, fV, flev, ft);
+    
+    /*std::cout << "Orthogonality test:  " << RandBLAS::osbm::orthogonality_test<double>(m,n,dV,n) << '\n';
+    std::cout << RandBLAS::osbm::levscore_test<double>(m,n,dV,dlev) << '\n';*/
+
+    double max = 0;
+    for (i = 0; i<m; i++){
+        if (abs(dt[i]-ft[i]) > max){
+            max = abs(dt[i]-ft[i]);
+        }
+    }
+    std::cout << max <<'\n';
+
+    delete[] fV;
+    delete[] dV;
+    delete[] flev;
+    delete[] dlev;
+    delete[] dt;
+    delete[] ft;
 
     return 0;
 }
@@ -67,14 +175,15 @@ void gen_osbm(T *V, T *lev, void (*gen_lev)(T *lev, int64_t n_rows, int64_t n_co
         V[(n_rows-n_cols)*n_cols + i + i*n_cols] = 1;
     }
     gen_lev(lev, n_rows, n_cols); 
-    RandBLAS::osbm::OSBMtest<double>(n_rows, n_cols, V, lev);
+
+    RandBLAS::osbm::OSBMtest<T>(n_rows, n_cols, V, lev);
 }
 
 template<typename T>
 void gen_rperm_mat(T *V, int64_t n_rows, int64_t n_cols) {
     int i;
     std::fill(V, V+n_rows*n_cols, 0);
-    T *perm = new T[n_rows];
+    int64_t *perm = new int64_t[n_rows];
     for (i = 0; i < n_rows; i++) {
         perm[i] = i;
     }
@@ -101,21 +210,24 @@ void gen_sjlts(RandBLAS::sjlts::SJLT *S, uint64_t n_rows_sketched, uint64_t n_co
 }
 
 void vary_nnz(double *A, double *err, int64_t m, int64_t n, int64_t d, int64_t len) {
-    //double SA[d*n];
     double *SA = new double[d*n];
     RandBLAS::sjlts::SJLT *S = new RandBLAS::sjlts::SJLT;
     for (uint64_t nnz = 1; nnz < len+1; nnz++) {
-        //RandBLAS::sjlts::SJLT *S = new RandBLAS::sjlts::SJLT;
         gen_sjlts(S, d, m, nnz);
         
         std::fill(SA, SA+d*n, 0);
         RandBLAS::sjlts::sketch_cscrow(*S, n, A, SA, 1);
         err[nnz-1] = subspace_distortion(SA, d, n);
-        std::cout << "nnz = " << nnz << ":  " << err[nnz-1] << '\n'; 
+        //std::cout << "Effective Distortion, nnz = " << nnz << ":  " << err[nnz-1] << '\n'; 
         
-        std::cout << "Condition number, nnz = " << nnz << ":  " << cond(SA, d, n) << '\n';
+        std::cout << "Condition number,     nnz = " << nnz << ":  " << cond(SA, d, n) << '\n';
 
     }
+    std::cout << "--------------------------" << '\n';
+    for (int i = 0; i<len; i++) {
+        std::cout << "Effective Distortion, nnz = " << i+1 << ":  " << err[i] << '\n'; 
+    }
+    
     delete S;
     delete[] SA;
        
@@ -188,7 +300,7 @@ template<typename T>
 void gen_rvec_lev(T *lev, int64_t n_rows, int64_t n_cols) {
     int i;
     T sum = 0;
-    RandBLAS::dense_op::gen_rmat_unif<double>(1, n_rows, lev, 0);
+    RandBLAS::dense_op::gen_rmat_unif<T>(1, n_rows, lev, 0);
     blas::scal(n_rows, 0.5, lev, 1); 
     for (i=0; i<n_rows; i++) {
         lev[i] += 0.5;

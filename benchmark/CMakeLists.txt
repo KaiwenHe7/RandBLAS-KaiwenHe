@@ -36,17 +36,17 @@ target_link_libraries(
 )
 
 set(
-    osbmnew_cxx
-    osbmnew.cpp
+    OSBMmixed_cxx
+    OSBMmixed.cpp
 )
 add_executable(
-    osbmnew  ${osbmnew_cxx}
+    OSBMmixed  ${OSBMmixed_cxx}
 )
 target_include_directories(
-    osbmnew PUBLIC ${Random123_DIR}
+    OSBMmixed PUBLIC ${Random123_DIR}
 )
 target_link_libraries(
-    osbmnew PUBLIC RandBLAS blaspp lapackpp 
+    OSBMmixed PUBLIC RandBLAS blaspp lapackpp 
 )
 
 set(
